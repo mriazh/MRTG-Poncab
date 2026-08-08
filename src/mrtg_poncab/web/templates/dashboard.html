@@ -1,0 +1,295 @@
+{% extends "base.html" %}
+
+{% block title %}Traffic Dashboard - WAN INDIBIZ 150Mbps - MRTG-Poncab{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="/static/flatpickr.min.css">
+{% endblock %}
+
+{% block extra_styles %}
+.telemetry-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.metric-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 1rem 1.25rem;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+}
+
+.metric-label {
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    letter-spacing: 0.04em;
+    margin-bottom: 0.35rem;
+}
+
+.metric-value {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--primary);
+}
+
+.metric-subtext {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-top: 0.25rem;
+}
+
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-weight: 700;
+    font-size: 0.85rem;
+}
+
+.status-dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+}
+.status-dot.up { background-color: var(--success); }
+.status-dot.down { background-color: var(--danger); }
+.status-dot.reset { background-color: #F79009; }
+
+.controls-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 1rem 1.25rem;
+    margin-bottom: 1.5rem;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+}
+
+.preset-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    align-items: center;
+}
+
+.preset-btn {
+    padding: 0.35rem 0.75rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    border-radius: 4px;
+    border: 1px solid var(--border-color);
+    background: #FFFFFF;
+    color: #344054;
+    text-decoration: none;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.preset-btn:hover {
+    background: #F2F4F7;
+    border-color: #D0D5DD;
+}
+
+.preset-btn.active {
+    background: var(--primary);
+    color: #FFFFFF;
+    border-color: var(--primary);
+}
+
+.custom-range-form {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+}
+
+.custom-range-form input {
+    padding: 0.35rem 0.6rem;
+    font-size: 0.8rem;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    outline: none;
+}
+
+.custom-range-form input:focus {
+    border-color: var(--primary-light);
+}
+
+.graph-card {
+    text-align: center;
+}
+
+.graph-header-actions {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.graph-img-container {
+    background: #FFFFFF;
+    padding: 0.5rem;
+    border-radius: 4px;
+    display: inline-block;
+    max-width: 100%;
+    overflow-x: auto;
+}
+
+.graph-img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+    margin: 0 auto;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+}
+
+.autorefresh-select {
+    padding: 0.35rem 0.5rem;
+    font-size: 0.8rem;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background: #FFFFFF;
+    color: #344054;
+    outline: none;
+}
+{% endblock %}
+
+{% block content %}
+<!-- Live Telemetry Row -->
+<div class="telemetry-grid">
+    <div class="metric-card">
+        <div class="metric-label">Router Status</div>
+        <div class="metric-value">
+            <span class="status-badge" id="telemetry-status">
+                <span class="status-dot {{ latest_status.lower() }}"></span>
+                {{ latest_status }}
+            </span>
+        </div>
+        <div class="metric-subtext">Uptime: <span id="telemetry-uptime">{{ latest_uptime or 'unknown' }}</span></div>
+    </div>
+
+    <div class="metric-card">
+        <div class="metric-label">Current Inbound (WAN)</div>
+        <div class="metric-value" style="color: #008800;" id="telemetry-inbound">{{ current_in_formatted }}</div>
+        <div class="metric-subtext">Incoming traffic rate</div>
+    </div>
+
+    <div class="metric-card">
+        <div class="metric-label">Current Outbound (WAN)</div>
+        <div class="metric-value" style="color: #0000CC;" id="telemetry-outbound">{{ current_out_formatted }}</div>
+        <div class="metric-subtext">Outgoing traffic rate</div>
+    </div>
+
+    <div class="metric-card">
+        <div class="metric-label">Last Polled</div>
+        <div class="metric-value" style="font-size: 1.1rem; padding-top: 0.25rem;" id="telemetry-time">
+            {{ latest_timestamp_wib }}
+        </div>
+        <div class="metric-subtext">Target: WAN (INDIBIZ 150M)</div>
+    </div>
+</div>
+
+<!-- Controls / Date Filter Bar -->
+<div class="controls-card">
+    <div class="preset-group">
+        <span style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted); margin-right: 0.25rem;">PRESET:</span>
+        <a href="/?preset=today" class="preset-btn {% if active_preset == 'today' %}active{% endif %}">Hari Ini</a>
+        <a href="/?preset=yesterday" class="preset-btn {% if active_preset == 'yesterday' %}active{% endif %}">Kemarin</a>
+        <a href="/?preset=24h" class="preset-btn {% if active_preset == '24h' %}active{% endif %}">24 Jam Terakhir</a>
+        <a href="/?preset=7d" class="preset-btn {% if active_preset == '7d' %}active{% endif %}">7 Hari Terakhir</a>
+        <a href="/?preset=month" class="preset-btn {% if active_preset == 'month' %}active{% endif %}">Bulan Ini</a>
+    </div>
+
+    <form method="GET" action="/" class="custom-range-form">
+        <label for="start">From:</label>
+        <input type="text" id="start" name="start" value="{{ custom_start }}" placeholder="YYYY-MM-DD HH:MM" style="width: 145px;">
+        <label for="end">To:</label>
+        <input type="text" id="end" name="end" value="{{ custom_end }}" placeholder="YYYY-MM-DD HH:MM" style="width: 145px;">
+        <button type="submit" class="btn btn-primary" style="padding: 0.35rem 0.75rem; font-size: 0.8rem;">Filter</button>
+    </form>
+
+    <div style="display: flex; align-items: center; gap: 0.4rem;">
+        <span class="status-badge" style="font-size: 0.8rem; color: var(--text-muted);">
+            <span class="status-dot up" style="width: 7px; height: 7px;"></span>
+            Auto-refresh: 1 Min
+        </span>
+    </div>
+</div>
+
+<!-- Graph Display Card -->
+<div class="card graph-card">
+    <div class="card-header">
+        <h2>{{ graph_title }}</h2>
+        <div class="graph-header-actions">
+            <a href="{{ export_png_url }}" download class="btn btn-secondary" style="padding: 0.35rem 0.7rem; font-size: 0.75rem;">Download PNG</a>
+            <a href="{{ export_excel_url }}" download class="btn btn-secondary" style="padding: 0.35rem 0.7rem; font-size: 0.75rem;">Download Excel</a>
+            <a href="{{ export_csv_url }}" download class="btn btn-secondary" style="padding: 0.35rem 0.7rem; font-size: 0.75rem;">Download CSV</a>
+        </div>
+    </div>
+    <div class="card-body">
+        <div class="graph-img-container">
+            <img src="{{ graph_img_url }}" alt="RRDtool Traffic Graph" class="graph-img" id="traffic-graph-img">
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="/static/flatpickr.min.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // Initialize 24-hour Flatpickr on custom range inputs
+        if (typeof flatpickr !== 'undefined') {
+            flatpickr("#start", {
+                enableTime: true,
+                time_24hr: true,
+                dateFormat: "Y-m-d H:i",
+                allowInput: true
+            });
+            flatpickr("#end", {
+                enableTime: true,
+                time_24hr: true,
+                dateFormat: "Y-m-d H:i",
+                allowInput: true
+            });
+        }
+
+        // Fixed 1 minute (60s) auto-refresh for telemetry and graph
+        setInterval(() => {
+            const img = document.getElementById('traffic-graph-img');
+            if (img) {
+                const currentSrc = new URL(img.src);
+                currentSrc.searchParams.set('_t', new Date().getTime());
+                img.src = currentSrc.toString();
+            }
+            fetch('/api/telemetry')
+                .then(r => r.json())
+                .then(data => {
+                    if (data) {
+                        if (document.getElementById('telemetry-inbound')) {
+                            document.getElementById('telemetry-inbound').innerText = data.current_in_formatted;
+                        }
+                        if (document.getElementById('telemetry-outbound')) {
+                            document.getElementById('telemetry-outbound').innerText = data.current_out_formatted;
+                        }
+                        if (document.getElementById('telemetry-uptime')) {
+                            document.getElementById('telemetry-uptime').innerText = data.uptime || 'unknown';
+                        }
+                        if (document.getElementById('telemetry-time')) {
+                            document.getElementById('telemetry-time').innerText = data.latest_timestamp_wib;
+                        }
+                    }
+                })
+                .catch(err => console.debug('Telemetry refresh error:', err));
+        }, 60000);
+    });
+</script>
+{% endblock %}

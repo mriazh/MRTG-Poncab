@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}MRTG-Poncab - GMF AeroAsia Pondok Cabe{% endblock %}</title>
+    <style>
+        :root {
+            --primary: #1F497D;
+            --primary-dark: #153256;
+            --primary-light: #2D68B2;
+            --accent-green: #00CC00;
+            --accent-blue: #0000FF;
+            --bg: #F4F6F9;
+            --card-bg: #FFFFFF;
+            --text-main: #1D2939;
+            --text-muted: #667085;
+            --border-color: #E4E7EC;
+            --danger: #D92D20;
+            --success: #12B76A;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg);
+            color: var(--text-main);
+            line-height: 1.5;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        header {
+            background-color: var(--primary);
+            color: #FFFFFF;
+            padding: 0.75rem 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .brand h1 {
+            font-size: 1.15rem;
+            font-weight: 700;
+            letter-spacing: -0.01em;
+        }
+
+        .brand-subtitle {
+            font-size: 0.8rem;
+            opacity: 0.85;
+            padding-left: 0.5rem;
+            border-left: 1px solid rgba(255,255,255,0.3);
+        }
+
+        .nav-actions {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .user-info {
+            font-size: 0.85rem;
+            opacity: 0.95;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.4rem;
+            padding: 0.45rem 0.9rem;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            text-decoration: none;
+            border: 1px solid transparent;
+            cursor: pointer;
+            transition: background-color 0.15s, border-color 0.15s;
+        }
+
+        .btn-outline-light {
+            background: transparent;
+            color: #FFFFFF;
+            border-color: rgba(255,255,255,0.4);
+        }
+        .btn-outline-light:hover {
+            background: rgba(255,255,255,0.15);
+            border-color: #FFFFFF;
+        }
+
+        .btn-primary {
+            background-color: var(--primary);
+            color: #FFFFFF;
+        }
+        .btn-primary:hover {
+            background-color: var(--primary-dark);
+        }
+
+        .btn-secondary {
+            background-color: #FFFFFF;
+            color: var(--text-main);
+            border-color: var(--border-color);
+        }
+        .btn-secondary:hover {
+            background-color: #F9FAFB;
+            border-color: #D0D5DD;
+        }
+
+        .container {
+            max-width: 1200px;
+            width: 100%;
+            margin: 1.5rem auto;
+            padding: 0 1rem;
+            flex: 1;
+        }
+
+        .card {
+            background: var(--card-bg);
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            margin-bottom: 1.5rem;
+            overflow: hidden;
+        }
+
+        .card-header {
+            padding: 0.9rem 1.25rem;
+            background-color: #FAFAFC;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .card-header h2, .card-header h3 {
+            font-size: 0.95rem;
+            font-weight: 700;
+            color: var(--primary);
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+
+        .card-body {
+            padding: 1.25rem;
+        }
+
+        footer {
+            background-color: #FFFFFF;
+            border-top: 1px solid var(--border-color);
+            padding: 0.75rem;
+            text-align: center;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        .alert {
+            padding: 0.75rem 1rem;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            margin-bottom: 1rem;
+        }
+        .alert-error {
+            background-color: #FEF3F2;
+            color: #B42318;
+            border: 1px solid #FECDCA;
+        }
+        .alert-success {
+            background-color: #ECFDF3;
+            color: #027A48;
+            border: 1px solid #A6F4C5;
+        }
+
+        {% block extra_styles %}{% endblock %}
+    </style>
+    {% block extra_head %}{% endblock %}
+</head>
+<body>
+    <header>
+        <div class="brand">
+            <h1>MRTG-Poncab</h1>
+            <span class="brand-subtitle">GMF AeroAsia Pondok Cabe</span>
+        </div>
+        <div class="nav-actions">
+            {% if current_user %}
+                <span class="user-info">Logged in: <strong>{{ current_user.username }}</strong></span>
+                <a href="/logout" class="btn btn-outline-light">Logout</a>
+            {% endif %}
+        </div>
+    </header>
+
+    <div class="container">
+        {% block content %}{% endblock %}
+    </div>
+
+    <footer>
+        &copy; 2026 GMF AeroAsia &middot; Network Monitoring System &middot; RouterOS API &middot; RRDtool Visual Fidelity
+    </footer>
+
+    {% block extra_scripts %}{% endblock %}
+</body>
+</html>

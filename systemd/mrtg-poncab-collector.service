@@ -1,0 +1,23 @@
+[Unit]
+Description=MRTG-Poncab Traffic Collector Daemon
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=mriazh
+Group=mriazh
+WorkingDirectory=/home/mriazh/MRTG-Poncab
+EnvironmentFile=-/home/mriazh/MRTG-Poncab/.env
+ExecStart=/home/mriazh/MRTG-Poncab/.venv/bin/python -m mrtg_poncab collect
+Restart=always
+RestartSec=10s
+
+# Security sandboxing
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/home/mriazh/MRTG-Poncab/data /home/mriazh/MRTG-Poncab
+
+[Install]
+WantedBy=multi-user.target

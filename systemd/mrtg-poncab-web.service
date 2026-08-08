@@ -1,0 +1,22 @@
+[Unit]
+Description=MRTG-Poncab Web Dashboard Server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=mriazh
+Group=mriazh
+WorkingDirectory=/home/mriazh/MRTG-Poncab
+EnvironmentFile=-/home/mriazh/MRTG-Poncab/.env
+ExecStart=/home/mriazh/MRTG-Poncab/.venv/bin/python -m mrtg_poncab web --host 0.0.0.0 --port 8000
+Restart=always
+RestartSec=5s
+
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/home/mriazh/MRTG-Poncab/data /home/mriazh/MRTG-Poncab
+
+[Install]
+WantedBy=multi-user.target
