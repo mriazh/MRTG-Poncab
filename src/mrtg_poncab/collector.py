@@ -109,7 +109,7 @@ class RouterOSClient:
         host: str,
         username: str,
         password: str,
-        port: int = 5336,
+        port: int = 8728,
         timeout: int = 15,
         plaintext_login: bool = True,
     ) -> None:

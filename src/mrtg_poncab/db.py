@@ -221,6 +221,21 @@ class Database:
 
     get_latest_traffic_sample = get_latest_sample
 
+    def get_recent_traffic_samples(self, limit: int = 10) -> list[dict[str, Any]]:
+        """Return the most recent traffic samples, newest first."""
+        if limit < 1:
+            raise ValueError("limit must be positive")
+        try:
+            with self.connection() as connection:
+                rows = connection.execute(
+                    "SELECT * FROM traffic_samples ORDER BY epoch DESC, id DESC LIMIT ?",
+                    (int(limit),),
+                ).fetchall()
+                return [dict(row) for row in rows]
+        except sqlite3.OperationalError:
+            self.initialize()
+            return []
+
     def get_traffic_samples(
         self,
         start: str | datetime | int | float,

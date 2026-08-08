@@ -245,6 +245,21 @@ def dashboard_view(
     c_start = display_st[:16]
     c_end = display_et[:16]
 
+    raw_recent = db.get_recent_traffic_samples(limit=10)
+    formatted_recent: list[dict[str, Any]] = []
+    for sample in raw_recent:
+        sample_utc = datetime.fromtimestamp(sample["epoch"], tz=UTC)
+        sample_wib = sample_utc + WIB_OFFSET
+        formatted_recent.append(
+            {
+                "timestamp_wib": sample_wib.strftime("%Y-%m-%d %H:%M:%S"),
+                "status": sample["status"],
+                "inbound_formatted": format_engineering_bits(sample["rx_bps"]),
+                "outbound_formatted": format_engineering_bits(sample["tx_bps"]),
+                "uptime": sample.get("uptime") or "unknown",
+            }
+        )
+
     return templates.TemplateResponse(
         request=request,
         name="dashboard.html",
@@ -258,6 +273,7 @@ def dashboard_view(
             "latest_timestamp_wib": latest_ts_wib,
             "current_in_formatted": cur_in,
             "current_out_formatted": cur_out,
+            "recent_samples": formatted_recent,
             "graph_title": (
                 f"Traffic {settings.routeros_interface} (INDIBIZ 150M) - GMF Pondok Cabe"
             ),
@@ -277,6 +293,21 @@ def api_telemetry(
 ) -> dict[str, Any]:
     """Return JSON telemetry summary."""
     latest = db.get_latest_sample()
+    raw_recent = db.get_recent_traffic_samples(limit=10)
+    formatted_recent: list[dict[str, Any]] = []
+    for sample in raw_recent:
+        sample_utc = datetime.fromtimestamp(sample["epoch"], tz=UTC)
+        sample_wib = sample_utc + WIB_OFFSET
+        formatted_recent.append(
+            {
+                "timestamp_wib": sample_wib.strftime("%Y-%m-%d %H:%M:%S"),
+                "status": sample["status"],
+                "inbound_formatted": format_engineering_bits(sample["rx_bps"]),
+                "outbound_formatted": format_engineering_bits(sample["tx_bps"]),
+                "uptime": sample.get("uptime") or "unknown",
+            }
+        )
+
     if not latest:
         return {
             "status": "NO DATA",
@@ -286,6 +317,7 @@ def api_telemetry(
             "current_out_formatted": "0 b",
             "rx_bps": 0.0,
             "tx_bps": 0.0,
+            "recent_samples": formatted_recent,
         }
 
     ts_utc = datetime.fromtimestamp(latest["epoch"], tz=UTC)
@@ -298,6 +330,7 @@ def api_telemetry(
         "current_out_formatted": format_engineering_bits(latest["tx_bps"]),
         "rx_bps": latest["rx_bps"],
         "tx_bps": latest["tx_bps"],
+        "recent_samples": formatted_recent,
     }
 
 

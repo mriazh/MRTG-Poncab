@@ -31,11 +31,11 @@ class Settings(BaseSettings):
     )
 
     routeros_host: str = Field(
-        default="id-04.tunnel.web.id",
+        default="192.168.88.1",
         validation_alias=AliasChoices("routeros_host", "router_host", "mikrotik_host"),
     )
     routeros_port: int = Field(
-        default=5336,
+        default=8728,
         validation_alias=AliasChoices("routeros_port", "router_port", "mikrotik_port"),
     )
     routeros_username: str = Field(

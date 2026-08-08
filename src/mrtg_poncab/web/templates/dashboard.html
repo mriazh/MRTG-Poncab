@@ -219,7 +219,7 @@
     <div style="display: flex; align-items: center; gap: 0.4rem;">
         <span class="status-badge" style="font-size: 0.8rem; color: var(--text-muted);">
             <span class="status-dot up" style="width: 7px; height: 7px;"></span>
-            Auto-refresh: 1 Min
+            Auto-refresh: <span id="countdown-timer">60</span>s
         </span>
     </div>
 </div>
@@ -238,6 +238,47 @@
         <div class="graph-img-container">
             <img src="{{ graph_img_url }}" alt="RRDtool Traffic Graph" class="graph-img" id="traffic-graph-img">
         </div>
+    </div>
+</div>
+
+<!-- Recent Traffic Samples Table (Collapsible) -->
+<div class="card" style="margin-top: 1.5rem;">
+    <div class="card-header" id="recent-samples-toggle" style="cursor: pointer; user-select: none;">
+        <h2>Riwayat Sampel Trafik Terakhir (10 Terakhir)</h2>
+        <span id="recent-samples-arrow" style="font-size: 0.85rem; color: var(--text-muted); transition: transform 0.2s ease;">▼</span>
+    </div>
+    <div class="card-body" id="recent-samples-body" style="padding: 0; overflow-x: auto;">
+        <table style="width: 100%; border-collapse: collapse; font-size: 0.85rem; text-align: left;">
+            <thead>
+                <tr style="border-bottom: 1px solid var(--border-color); background-color: var(--header-bg);">
+                    <th style="padding: 0.75rem 1rem;">Waktu (WIB)</th>
+                    <th style="padding: 0.75rem 1rem;">Status</th>
+                    <th style="padding: 0.75rem 1rem;">Inbound</th>
+                    <th style="padding: 0.75rem 1rem;">Outbound</th>
+                    <th style="padding: 0.75rem 1rem;">Uptime</th>
+                </tr>
+            </thead>
+            <tbody id="recent-samples-tbody">
+                {% for s in recent_samples %}
+                <tr style="border-bottom: 1px solid var(--border-color);">
+                    <td style="padding: 0.6rem 1rem;">{{ s.timestamp_wib }}</td>
+                    <td style="padding: 0.6rem 1rem;">
+                        <span class="status-badge">
+                            <span class="status-dot {{ s.status.lower() }}"></span>
+                            {{ s.status }}
+                        </span>
+                    </td>
+                    <td style="padding: 0.6rem 1rem; color: var(--accent-green); font-family: monospace; font-weight: 700;">{{ s.inbound_formatted }}</td>
+                    <td style="padding: 0.6rem 1rem; color: var(--accent-blue); font-family: monospace; font-weight: 700;">{{ s.outbound_formatted }}</td>
+                    <td style="padding: 0.6rem 1rem; color: var(--text-muted);">{{ s.uptime or 'unknown' }}</td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="5" style="padding: 1.5rem; text-align: center; color: var(--text-muted);">Belum ada rekaman sampel trafik</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
     </div>
 </div>
 {% endblock %}
@@ -262,34 +303,87 @@
             });
         }
 
-        // Fixed 1 minute (60s) auto-refresh for telemetry and graph
-        setInterval(() => {
+        // Collapsible Recent Samples Table Toggle
+        const toggleHeader = document.getElementById('recent-samples-toggle');
+        const tableBody = document.getElementById('recent-samples-body');
+        const arrow = document.getElementById('recent-samples-arrow');
+        if (toggleHeader && tableBody && arrow) {
+            toggleHeader.addEventListener('click', () => {
+                if (tableBody.style.display === 'none') {
+                    tableBody.style.display = 'block';
+                    arrow.style.transform = 'rotate(0deg)';
+                } else {
+                    tableBody.style.display = 'none';
+                    arrow.style.transform = 'rotate(-90deg)';
+                }
+            });
+        }
+
+        // Live Countdown Timer (60s countdown) and smooth dynamic auto-refresh
+        let secondsLeft = 60;
+        const countdownEl = document.getElementById('countdown-timer');
+
+        function triggerRefresh() {
+            // Refresh graph image with cachebuster
             const img = document.getElementById('traffic-graph-img');
             if (img) {
                 const currentSrc = new URL(img.src);
                 currentSrc.searchParams.set('_t', new Date().getTime());
                 img.src = currentSrc.toString();
             }
+
+            // Fetch live telemetry & recent samples
             fetch('/api/telemetry')
                 .then(r => r.json())
                 .then(data => {
                     if (data) {
-                        if (document.getElementById('telemetry-inbound')) {
-                            document.getElementById('telemetry-inbound').innerText = data.current_in_formatted;
-                        }
-                        if (document.getElementById('telemetry-outbound')) {
-                            document.getElementById('telemetry-outbound').innerText = data.current_out_formatted;
-                        }
-                        if (document.getElementById('telemetry-uptime')) {
-                            document.getElementById('telemetry-uptime').innerText = data.uptime || 'unknown';
-                        }
-                        if (document.getElementById('telemetry-time')) {
-                            document.getElementById('telemetry-time').innerText = data.latest_timestamp_wib;
+                        const inEl = document.getElementById('telemetry-inbound');
+                        const outEl = document.getElementById('telemetry-outbound');
+                        const upEl = document.getElementById('telemetry-uptime');
+                        const timeEl = document.getElementById('telemetry-time');
+
+                        if (inEl) inEl.innerText = data.current_in_formatted;
+                        if (outEl) outEl.innerText = data.current_out_formatted;
+                        if (upEl) upEl.innerText = data.uptime || 'unknown';
+                        if (timeEl) timeEl.innerText = data.latest_timestamp_wib;
+
+                        // Update recent samples table
+                        const tbody = document.getElementById('recent-samples-tbody');
+                        if (tbody && data.recent_samples && data.recent_samples.length > 0) {
+                            let rowsHtml = '';
+                            data.recent_samples.forEach(s => {
+                                rowsHtml += `
+                                    <tr style="border-bottom: 1px solid var(--border-color);">
+                                        <td style="padding: 0.6rem 1rem;">${s.timestamp_wib}</td>
+                                        <td style="padding: 0.6rem 1rem;">
+                                            <span class="status-badge">
+                                                <span class="status-dot ${s.status.toLowerCase()}"></span>
+                                                ${s.status}
+                                            </span>
+                                        </td>
+                                        <td style="padding: 0.6rem 1rem; color: var(--accent-green); font-family: monospace; font-weight: 700;">${s.inbound_formatted}</td>
+                                        <td style="padding: 0.6rem 1rem; color: var(--accent-blue); font-family: monospace; font-weight: 700;">${s.outbound_formatted}</td>
+                                        <td style="padding: 0.6rem 1rem; color: var(--text-muted);">${s.uptime || 'unknown'}</td>
+                                    </tr>
+                                `;
+                            });
+                            tbody.innerHTML = rowsHtml;
                         }
                     }
                 })
-                .catch(err => console.debug('Telemetry refresh error:', err));
-        }, 60000);
+                .catch(err => console.error("Telemetry refresh error:", err));
+        }
+
+        setInterval(() => {
+            secondsLeft -= 1;
+            if (secondsLeft <= 0) {
+                secondsLeft = 60;
+                triggerRefresh();
+            }
+            if (countdownEl) {
+                countdownEl.textContent = secondsLeft;
+            }
+        }, 1000);
     });
 </script>
 {% endblock %}

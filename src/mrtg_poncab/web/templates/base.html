@@ -4,6 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}MRTG-Poncab - GMF AeroAsia Pondok Cabe{% endblock %}</title>
+    <script>
+        (function() {
+            const savedTheme = localStorage.getItem('mrtg_theme') || 'light';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+        })();
+    </script>
     <style>
         :root {
             --primary: #1F497D;
@@ -13,11 +19,28 @@
             --accent-blue: #0000FF;
             --bg: #F4F6F9;
             --card-bg: #FFFFFF;
+            --header-bg: #FAFAFC;
             --text-main: #1D2939;
             --text-muted: #667085;
             --border-color: #E4E7EC;
             --danger: #D92D20;
             --success: #12B76A;
+            --input-bg: #FFFFFF;
+        }
+
+        [data-theme="dark"] {
+            --primary: #38BDF8;
+            --primary-dark: #0284C7;
+            --primary-light: #7DD3FC;
+            --accent-green: #22C55E;
+            --accent-blue: #38BDF8;
+            --bg: #0F172A;
+            --card-bg: #1E293B;
+            --header-bg: #162032;
+            --text-main: #F8FAFC;
+            --text-muted: #94A3B8;
+            --border-color: #334155;
+            --input-bg: #0F172A;
         }
 
         * {
@@ -34,16 +57,22 @@
             display: flex;
             flex-direction: column;
             min-height: 100vh;
+            transition: background-color 0.2s ease, color 0.2s ease;
         }
 
         header {
-            background-color: var(--primary);
+            background-color: #1F497D;
             color: #FFFFFF;
             padding: 0.75rem 1.5rem;
             display: flex;
             justify-content: space-between;
             align-items: center;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        [data-theme="dark"] header {
+            background-color: #162032;
+            border-bottom: 1px solid var(--border-color);
         }
 
         .brand {
@@ -110,13 +139,13 @@
         }
 
         .btn-secondary {
-            background-color: #FFFFFF;
+            background-color: var(--card-bg);
             color: var(--text-main);
             border-color: var(--border-color);
         }
         .btn-secondary:hover {
-            background-color: #F9FAFB;
-            border-color: #D0D5DD;
+            background-color: var(--header-bg);
+            border-color: var(--text-muted);
         }
 
         .container {
@@ -138,7 +167,7 @@
 
         .card-header {
             padding: 0.9rem 1.25rem;
-            background-color: #FAFAFC;
+            background-color: var(--header-bg);
             border-bottom: 1px solid var(--border-color);
             display: flex;
             justify-content: space-between;
@@ -158,7 +187,7 @@
         }
 
         footer {
-            background-color: #FFFFFF;
+            background-color: var(--card-bg);
             border-top: 1px solid var(--border-color);
             padding: 0.75rem;
             text-align: center;
@@ -194,6 +223,10 @@
             <span class="brand-subtitle">GMF AeroAsia Pondok Cabe</span>
         </div>
         <div class="nav-actions">
+            <button id="theme-toggle" class="btn btn-outline-light" type="button" aria-label="Toggle Theme" style="padding: 0.35rem 0.65rem; font-size: 0.8rem;">
+                <span id="theme-toggle-icon">🌙</span>
+                <span id="theme-toggle-text">Dark</span>
+            </button>
             {% if current_user %}
                 <span class="user-info">Logged in: <strong>{{ current_user.username }}</strong></span>
                 <a href="/logout" class="btn btn-outline-light">Logout</a>
@@ -209,6 +242,36 @@
         &copy; 2026 GMF AeroAsia &middot; Network Monitoring System &middot; RouterOS API &middot; RRDtool Visual Fidelity
     </footer>
 
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const toggleBtn = document.getElementById('theme-toggle');
+            const icon = document.getElementById('theme-toggle-icon');
+            const text = document.getElementById('theme-toggle-text');
+
+            function updateToggleUI(theme) {
+                if (theme === 'dark') {
+                    if (icon) icon.textContent = '☀️';
+                    if (text) text.textContent = 'Light';
+                } else {
+                    if (icon) icon.textContent = '🌙';
+                    if (text) text.textContent = 'Dark';
+                }
+            }
+
+            const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
+            updateToggleUI(currentTheme);
+
+            if (toggleBtn) {
+                toggleBtn.addEventListener('click', () => {
+                    const activeTheme = document.documentElement.getAttribute('data-theme') || 'light';
+                    const newTheme = activeTheme === 'dark' ? 'light' : 'dark';
+                    document.documentElement.setAttribute('data-theme', newTheme);
+                    localStorage.setItem('mrtg_theme', newTheme);
+                    updateToggleUI(newTheme);
+                });
+            }
+        });
+    </script>
     {% block extra_scripts %}{% endblock %}
 </body>
 </html>

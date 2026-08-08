@@ -82,10 +82,13 @@ def test_login_success_and_session(client_with_db: TestClient) -> None:
     assert dash_resp.status_code == 200
     assert "MRTG-Poncab" in dash_resp.text
     assert "Traffic WAN" in dash_resp.text
+    assert "theme-toggle" in dash_resp.text
+    assert "Riwayat Sampel Trafik Terakhir" in dash_resp.text
+    assert "countdown-timer" in dash_resp.text
 
 
 def test_api_telemetry_endpoint(client_with_db: TestClient) -> None:
-    """GET /api/telemetry returns structured JSON metrics."""
+    """GET /api/telemetry returns structured JSON metrics and recent samples."""
     login_resp = client_with_db.post("/login", data={"username": "admin", "password": "admin123"})
     cookies = login_resp.cookies
 
@@ -95,6 +98,14 @@ def test_api_telemetry_endpoint(client_with_db: TestClient) -> None:
     assert data["status"] == "UP"
     assert "current_in_formatted" in data
     assert "current_out_formatted" in data
+    assert "recent_samples" in data
+    assert isinstance(data["recent_samples"], list)
+    assert len(data["recent_samples"]) > 0
+    first_sample = data["recent_samples"][0]
+    assert "timestamp_wib" in first_sample
+    assert "inbound_formatted" in first_sample
+    assert "outbound_formatted" in first_sample
+    assert "status" in first_sample
 
 
 def test_api_graph_png_endpoint(client_with_db: TestClient) -> None:

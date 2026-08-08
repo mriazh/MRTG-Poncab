@@ -8,7 +8,7 @@ The system polls the MikroTik RouterOS API over a dedicated TCP tunnel, records 
 
 ## Key Capabilities
 
-- **Direct RouterOS API Polling**: Queries cumulative octet counters (`rx-byte`, `tx-byte`) over TCP port `5336` (`id-04.tunnel.web.id:5336`), bypassing SNMP UDP limitations.
+- **Direct RouterOS API Polling**: Queries cumulative octet counters (`rx-byte`, `tx-byte`) over TCP port `8728` (or custom tunnel port), bypassing SNMP UDP limitations.
 - **Robust Delta Rate Engine**: Computes exact bits per second with counter rollover, router reboot, and rate sanity guards.
 - **RRDtool Visual Fidelity**: Generates pixel-perfect telco-style graphs (stepped solid green inbound area `#00CC00`, stepped dark blue outbound line `#0000CC`, high-contrast pink dotted grid `#FFAAAA` at `zorder=3`, 3D chiseled outer bezel, 100% monospace typography, and directional arrows).
 - **True RRDtool Dynamic Autoscale**: Implements standard logarithmic `nice_ceiling()` math with 5% headroom and 5 clean horizontal divisions, adapting effortlessly from idle/low traffic to 150 Mbps+ without clipping or flattening.
@@ -28,7 +28,7 @@ The system polls the MikroTik RouterOS API over a dedicated TCP tunnel, records 
 │    (GMF AeroAsia Pondok Cabe)        │
 │    Interface: WAN (INDIBIZ 150M)     │
 └──────────────────┬───────────────────┘
-                   │ RouterOS API (TCP 5336)
+                   │ RouterOS API (TCP 8728)
                    ▼
 ┌──────────────────────────────────────┐
 │       MRTG-Poncab Host               │
@@ -68,8 +68,8 @@ APP_NAME="MRTG-Poncab"
 DATABASE_PATH="data/traffic.db"
 
 # MikroTik RouterOS API Settings
-ROUTEROS_HOST="id-04.tunnel.web.id"
-ROUTEROS_PORT=5336
+ROUTEROS_HOST="192.168.88.1"
+ROUTEROS_PORT=8728
 ROUTEROS_USERNAME="mrtg"
 ROUTEROS_PASSWORD="YourRouterPassword"
 ROUTEROS_INTERFACE="WAN"
