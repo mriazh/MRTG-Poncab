@@ -42,6 +42,7 @@ def resolve_time_range(
     preset: str | None = None,
     start_str: str | None = None,
     end_str: str | None = None,
+    fullday: str | None = None,
 ) -> tuple[int, int, str, str, str]:
     """Resolve preset or custom datetime inputs into start/end epochs and labels.
 
@@ -51,7 +52,35 @@ def resolve_time_range(
     """
     now = _now_wib()
 
-    if preset == "yesterday":
+    if fullday:
+        # Full day single-date selection (00:00:00 to 23:59:59 WIB)
+        try:
+            f_clean = fullday.strip()[:10]
+            d = datetime.strptime(f_clean, "%Y-%m-%d")
+            st_wib = datetime(d.year, d.month, d.day, 0, 0, 0)
+            et_wib = datetime(d.year, d.month, d.day, 23, 59, 59)
+            active = "fullday"
+        except Exception:
+            st_wib = datetime(now.year, now.month, now.day, 0, 0, 0)
+            et_wib = now
+            active = "today"
+    elif preset == "1h":
+        et_wib = now
+        st_wib = now - timedelta(hours=1)
+        active = "1h"
+    elif preset == "3h":
+        et_wib = now
+        st_wib = now - timedelta(hours=3)
+        active = "3h"
+    elif preset == "6h":
+        et_wib = now
+        st_wib = now - timedelta(hours=6)
+        active = "6h"
+    elif preset == "12h":
+        et_wib = now
+        st_wib = now - timedelta(hours=12)
+        active = "12h"
+    elif preset == "yesterday":
         yesterday = now - timedelta(days=1)
         st_wib = datetime(yesterday.year, yesterday.month, yesterday.day, 0, 0, 0)
         et_wib = datetime(yesterday.year, yesterday.month, yesterday.day, 23, 59, 59)
@@ -68,6 +97,10 @@ def resolve_time_range(
         st_wib = datetime(now.year, now.month, 1, 0, 0, 0)
         et_wib = now
         active = "month"
+    elif preset == "today":
+        st_wib = datetime(now.year, now.month, now.day, 0, 0, 0)
+        et_wib = now
+        active = "today"
     elif start_str and end_str:
         # Custom range from form (format: YYYY-MM-DDTHH:MM or full ISO)
         st_clean = start_str.strip().replace("T", " ")
@@ -205,6 +238,7 @@ def dashboard_view(
     preset: str | None = Query(None),
     start: str | None = Query(None),
     end: str | None = Query(None),
+    fullday: str | None = Query(None),
     current_user: dict[str, Any] = Depends(require_authenticated_user),
     db: Database = Depends(get_db),
 ) -> Any:
@@ -213,6 +247,7 @@ def dashboard_view(
         preset=preset,
         start_str=start,
         end_str=end,
+        fullday=fullday,
     )
 
     # Telemetry card data
@@ -233,9 +268,13 @@ def dashboard_view(
         cur_out = "0 b"
 
     # Query strings for graph & downloads
-    range_params = (
-        f"preset={active_preset}" if active_preset != "custom" else f"start={start}&end={end}"
-    )
+    if active_preset == "custom":
+        range_params = f"start={start}&end={end}"
+    elif active_preset == "fullday":
+        range_params = f"fullday={fullday or display_st[:10]}"
+    else:
+        range_params = f"preset={active_preset}"
+
     graph_img_url = f"/api/graph.png?{range_params}"
     export_png_url = f"/api/graph.png?{range_params}&download=1"
     export_excel_url = f"/api/export/excel?{range_params}"
@@ -266,6 +305,7 @@ def dashboard_view(
         context={
             "current_user": current_user,
             "active_preset": active_preset,
+            "fullday_val": (fullday or display_st[:10]) if active_preset == "fullday" else "",
             "custom_start": c_start,
             "custom_end": c_end,
             "latest_status": latest_status,
@@ -281,6 +321,8 @@ def dashboard_view(
             "export_png_url": export_png_url,
             "export_excel_url": export_excel_url,
             "export_csv_url": export_csv_url,
+            "display_start": display_st,
+            "display_end": display_et,
         },
     )
 
@@ -339,6 +381,7 @@ def api_graph_png(
     preset: str | None = Query(None),
     start: str | None = Query(None),
     end: str | None = Query(None),
+    fullday: str | None = Query(None),
     width: int = Query(800),
     height: int = Query(360),
     download: bool = Query(False),
@@ -350,6 +393,7 @@ def api_graph_png(
         preset=preset,
         start_str=start,
         end_str=end,
+        fullday=fullday,
     )
 
     samples = db.get_traffic_samples(start=start_epoch, end=end_epoch)
@@ -380,6 +424,7 @@ def api_export_csv(
     preset: str | None = Query(None),
     start: str | None = Query(None),
     end: str | None = Query(None),
+    fullday: str | None = Query(None),
     current_user: dict[str, Any] = Depends(require_authenticated_user),
     db: Database = Depends(get_db),
 ) -> Response:
@@ -388,6 +433,7 @@ def api_export_csv(
         preset=preset,
         start_str=start,
         end_str=end,
+        fullday=fullday,
     )
 
     samples = db.get_traffic_samples(start=start_epoch, end=end_epoch)
@@ -409,6 +455,7 @@ def api_export_excel(
     preset: str | None = Query(None),
     start: str | None = Query(None),
     end: str | None = Query(None),
+    fullday: str | None = Query(None),
     current_user: dict[str, Any] = Depends(require_authenticated_user),
     db: Database = Depends(get_db),
 ) -> Response:
@@ -417,6 +464,7 @@ def api_export_excel(
         preset=preset,
         start_str=start,
         end_str=end,
+        fullday=fullday,
     )
 
     samples = db.get_traffic_samples(start=start_epoch, end=end_epoch)

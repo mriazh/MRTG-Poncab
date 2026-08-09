@@ -145,3 +145,73 @@ def test_logout_clears_cookie(client_with_db: TestClient) -> None:
     logout_resp = client_with_db.get("/logout", cookies=cookies)
     assert logout_resp.status_code == 303
     assert "/login" in logout_resp.headers["location"]
+
+
+def test_resolve_time_range_hourly_presets() -> None:
+    """resolve_time_range accurately calculates sub-day time spans."""
+    from mrtg_poncab.web.app import resolve_time_range
+
+    for preset_name, expected_hours in [("1h", 1), ("3h", 3), ("6h", 6), ("12h", 12)]:
+        st_ep, et_ep, disp_st, disp_et, active = resolve_time_range(preset=preset_name)
+        assert active == preset_name
+        assert (et_ep - st_ep) == expected_hours * 3600
+
+
+def test_resolve_time_range_fullday() -> None:
+    """resolve_time_range sets 00:00:00 to 23:59:59 WIB for a single selected date."""
+    from mrtg_poncab.web.app import resolve_time_range
+
+    st_ep, et_ep, disp_st, disp_et, active = resolve_time_range(fullday="2026-09-15")
+    assert active == "fullday"
+    assert disp_st == "2026-09-15 00:00:00"
+    assert disp_et == "2026-09-15 23:59:59"
+    assert (et_ep - st_ep) == 86399
+
+    # Fallback on invalid format
+    _, _, _, _, fallback_active = resolve_time_range(fullday="invalid-date")
+    assert fallback_active == "today"
+
+
+def test_dashboard_with_subday_presets_and_fullday(client_with_db: TestClient) -> None:
+    """Dashboard handles sub-day presets and fullday parameter, rendering matrix modal elements."""
+    login_resp = client_with_db.post("/login", data={"username": "admin", "password": "admin123"})
+    cookies = login_resp.cookies
+
+    # Test preset 1h
+    resp_1h = client_with_db.get("/?preset=1h", cookies=cookies)
+    assert resp_1h.status_code == 200
+    assert "active" in resp_1h.text
+    assert "1 Jam" in resp_1h.text
+    assert "matrix-modal-backdrop" in resp_1h.text
+    assert "matrix-hours-grid" in resp_1h.text
+    assert "matrix-minutes-grid" in resp_1h.text
+    assert "btn-quick-now" in resp_1h.text
+    assert "btn-fullday-modal" in resp_1h.text
+
+    # Test fullday parameter
+    resp_fd = client_with_db.get("/?fullday=2026-09-15", cookies=cookies)
+    assert resp_fd.status_code == 200
+    assert "2026-09-15" in resp_fd.text
+    assert "fullday=2026-09-15" in resp_fd.text
+
+
+def test_api_graph_and_exports_with_fullday(client_with_db: TestClient) -> None:
+    """Graph rendering and exports work seamlessly with fullday and subday presets."""
+    login_resp = client_with_db.post("/login", data={"username": "admin", "password": "admin123"})
+    cookies = login_resp.cookies
+
+    # Graph with fullday
+    graph_resp = client_with_db.get("/api/graph.png?fullday=2026-09-15", cookies=cookies)
+    assert graph_resp.status_code == 200
+    assert graph_resp.headers["content-type"] == "image/png"
+
+    # CSV with fullday
+    csv_resp = client_with_db.get("/api/export/csv?fullday=2026-09-15", cookies=cookies)
+    assert csv_resp.status_code == 200
+    assert "2026-09-15" in csv_resp.headers["content-disposition"]
+
+    # Excel with fullday
+    xlsx_resp = client_with_db.get("/api/export/excel?fullday=2026-09-15", cookies=cookies)
+    assert xlsx_resp.status_code == 200
+    assert "2026-09-15" in xlsx_resp.headers["content-disposition"]
+
