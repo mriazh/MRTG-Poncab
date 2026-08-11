@@ -65,6 +65,13 @@ class Settings(BaseSettings):
     admin_username: str = "admin"
     admin_password: str | None = None
 
+    # tunnel.web.id watchdog & auto-healing
+    tunnel_web_email: str | None = None
+    tunnel_web_password: str | None = None
+    tunnel_web_service_id: str = "46486"
+    tunnel_auto_restart: bool = True
+    tunnel_restart_cooldown_minutes: int = 30
+
     @property
     def poll_interval(self) -> int:
         """Backward-compatible short name used by collector code."""

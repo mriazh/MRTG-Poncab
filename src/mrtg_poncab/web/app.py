@@ -598,3 +598,37 @@ def api_console_logs(
     """Return recent console audit logs."""
     logs = db.get_recent_console_logs(limit=limit)
     return {"logs": logs}
+
+
+# 6. Tunnel Watchdog Diagnostics & Auto-Healing
+@app.get("/api/tunnel/diagnose")
+def api_tunnel_diagnose(
+    current_user: dict[str, Any] = Depends(require_authenticated_user),
+) -> dict[str, Any]:
+    """Perform live triangulation diagnostic on the RouterOS tunnel connection."""
+    from ..tunnel_watchdog import tunnel_watchdog
+
+    diag = tunnel_watchdog.diagnose()
+    portal_info = None
+    if settings.tunnel_web_email and settings.tunnel_web_password:
+        portal_info = tunnel_watchdog.inspect_member_portal()
+        # Remove client object before JSON serialization
+        if portal_info and "client" in portal_info:
+            portal_info.pop("client", None)
+            portal_info.pop("raw_body", None)
+
+    return {
+        "diagnosis": diag,
+        "portal": portal_info,
+        "target": f"{settings.routeros_host}:{settings.routeros_port}",
+    }
+
+
+@app.post("/api/tunnel/restart")
+def api_tunnel_restart(
+    current_user: dict[str, Any] = Depends(require_authenticated_user),
+) -> dict[str, Any]:
+    """Safely trigger VPN restart with cooldown guard."""
+    from ..tunnel_watchdog import tunnel_watchdog
+
+    return tunnel_watchdog.auto_heal_if_needed()
