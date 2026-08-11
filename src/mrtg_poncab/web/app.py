@@ -12,6 +12,7 @@ from fastapi import Depends, FastAPI, Form, Query, Request, status
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from pydantic import BaseModel
 
 from ..auth import (
     SESSION_COOKIE_NAME,
@@ -24,6 +25,7 @@ from ..auth import (
     verify_password,
 )
 from ..config import settings
+from ..console import console_manager, execute_routeros_command
 from ..db import Database
 from ..export import export_csv, export_excel
 from ..graph_renderer import format_engineering_bits, render_traffic_graph
@@ -263,7 +265,7 @@ def dashboard_view(
     else:
         latest_status = "NO DATA"
         latest_uptime = "unknown"
-        latest_ts_wib = "Belum ada rekaman data"
+        latest_ts_wib = "No data recorded yet"
         cur_in = "0 b"
         cur_out = "0 b"
 
@@ -354,7 +356,7 @@ def api_telemetry(
         return {
             "status": "NO DATA",
             "uptime": "unknown",
-            "latest_timestamp_wib": "Belum ada rekaman data",
+            "latest_timestamp_wib": "No data recorded yet",
             "current_in_formatted": "0 b",
             "current_out_formatted": "0 b",
             "rx_bps": 0.0,
@@ -485,3 +487,114 @@ def api_export_excel(
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
+
+
+# 5. RouterOS Remote Console Endpoints
+class ConsoleAuthRequest(BaseModel):
+    username: str
+    password: str
+
+
+class ConsoleExecuteRequest(BaseModel):
+    token: str
+    command: str
+
+
+class ConsoleTerminateRequest(BaseModel):
+    token: str
+
+
+@app.get("/console", response_class=HTMLResponse)
+def console_view(
+    request: Request,
+    current_user: dict[str, Any] = Depends(require_authenticated_user),
+) -> Any:
+    """Render authenticated RouterOS Web Console page."""
+    return templates.TemplateResponse(
+        request=request,
+        name="console.html",
+        context={
+            "current_user": current_user,
+            "router_target": f"{settings.routeros_host}:{settings.routeros_port}",
+        },
+    )
+
+
+@app.post("/api/console/auth")
+def api_console_auth(
+    payload: ConsoleAuthRequest,
+    current_user: dict[str, Any] = Depends(require_authenticated_user),
+) -> dict[str, Any]:
+    """Authenticate directly with MikroTik RouterOS API."""
+    success, token_or_err, identity = console_manager.authenticate(
+        host=settings.routeros_host,
+        port=settings.routeros_port,
+        username=payload.username,
+        password=payload.password,
+    )
+    if not success:
+        return {"success": False, "error": token_or_err}
+
+    return {
+        "success": True,
+        "token": token_or_err,
+        "identity": identity,
+        "username": payload.username,
+        "prompt": f"[{payload.username}@{identity}] > ",
+    }
+
+
+@app.post("/api/console/execute")
+def api_console_execute(
+    payload: ConsoleExecuteRequest,
+    current_user: dict[str, Any] = Depends(require_authenticated_user),
+    db: Database = Depends(get_db),
+) -> dict[str, Any]:
+    """Execute a RouterOS command within an authenticated console session."""
+    session = console_manager.get_session(payload.token)
+    if not session:
+        return {
+            "success": False,
+            "error": "Console session expired or invalid. Please login again.",
+            "session_expired": True,
+        }
+
+    cmd = payload.command.strip()
+    success, output = execute_routeros_command(session, cmd)
+
+    # Log to SQLite audit trail
+    if cmd:
+        db.insert_console_log(
+            username=session.username,
+            command=cmd,
+            status="OK" if success else "ERROR",
+            output_preview=output,
+        )
+
+    ts_wib = _now_wib().strftime("%H:%M:%S")
+    return {
+        "success": success,
+        "output": output,
+        "timestamp": ts_wib,
+        "prompt": f"[{session.username}@{session.identity}] > ",
+    }
+
+
+@app.post("/api/console/terminate")
+def api_console_terminate(
+    payload: ConsoleTerminateRequest,
+) -> dict[str, Any]:
+    """Immediately invalidate an active console session token."""
+    console_manager.terminate(payload.token)
+    return {"success": True}
+
+
+@app.get("/api/console/logs")
+def api_console_logs(
+    limit: int = Query(50),
+    current_user: dict[str, Any] = Depends(require_authenticated_user),
+    db: Database = Depends(get_db),
+) -> dict[str, Any]:
+    """Return recent console audit logs."""
+    logs = db.get_recent_console_logs(limit=limit)
+    return {"logs": logs}

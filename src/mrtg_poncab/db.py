@@ -126,12 +126,24 @@ class Database:
                     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
                 );
 
+                CREATE TABLE IF NOT EXISTS console_logs (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    timestamp TEXT NOT NULL,
+                    epoch INTEGER NOT NULL,
+                    username TEXT NOT NULL,
+                    command TEXT NOT NULL,
+                    status TEXT NOT NULL,
+                    output_preview TEXT NOT NULL
+                );
+
                 CREATE INDEX IF NOT EXISTS idx_traffic_samples_timestamp
                     ON traffic_samples(timestamp);
                 CREATE INDEX IF NOT EXISTS idx_traffic_samples_epoch
                     ON traffic_samples(epoch);
                 CREATE INDEX IF NOT EXISTS idx_sessions_expires_at
                     ON sessions(expires_at);
+                CREATE INDEX IF NOT EXISTS idx_console_logs_epoch
+                    ON console_logs(epoch DESC);
                 """
             )
             connection.commit()
@@ -374,6 +386,46 @@ class Database:
                 "DELETE FROM sessions WHERE expires_at <= ?", (current_time,)
             )
             return int(cursor.rowcount)
+
+    def insert_console_log(
+        self,
+        username: str,
+        command: str,
+        status: str,
+        output_preview: str,
+        timestamp: str | None = None,
+        epoch: int | None = None,
+    ) -> int:
+        """Insert a console command execution log entry and return its id."""
+        if timestamp is None or epoch is None:
+            ts_str, ts_epoch = _utc_timestamp(datetime.now(UTC))
+            timestamp = timestamp or ts_str
+            epoch = epoch if epoch is not None else ts_epoch
+
+        with self.connection() as connection, connection:
+            cursor = connection.execute(
+                """
+                INSERT INTO console_logs (
+                    timestamp, epoch, username, command, status, output_preview
+                )
+                VALUES (?, ?, ?, ?, ?, ?)
+                """,
+                (timestamp, epoch, username, command, status, output_preview[:500]),
+            )
+            return int(cursor.lastrowid or 0)
+
+    def get_recent_console_logs(self, limit: int = 50) -> list[dict[str, Any]]:
+        """Retrieve recent console execution audit logs ordered newest first."""
+        with self.connection() as connection:
+            rows = connection.execute(
+                """
+                SELECT * FROM console_logs
+                ORDER BY epoch DESC, id DESC
+                LIMIT ?
+                """,
+                (int(limit),),
+            ).fetchall()
+            return [dict(row) for row in rows]
 
     def close(self) -> None:
         """Compatibility no-op; connections are scoped to each operation."""

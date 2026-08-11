@@ -13,8 +13,10 @@ The system polls the MikroTik RouterOS API over a dedicated TCP tunnel, records 
 - **RRDtool Visual Fidelity**: Generates pixel-perfect telco-style graphs (stepped solid green inbound area `#00CC00`, stepped dark blue outbound line `#0000CC`, high-contrast pink dotted grid `#FFAAAA` at `zorder=3`, 3D chiseled outer bezel, 100% monospace typography, and directional arrows).
 - **True RRDtool Dynamic Autoscale**: Implements standard logarithmic `nice_ceiling()` math with 5% headroom and 5 clean horizontal divisions, adapting effortlessly from idle/low traffic to 150 Mbps+ without clipping or flattening.
 - **Multi-Timespan Adaptive Locators**: Dynamically adapts time ticks across all ranges: 1-minute ticks for sub-15m, 10-minute ticks for sub-2h, 2-hour ticks for 24h (MRTG Daily standard), and daily ticks for 7d (MRTG Weekly standard).
-- **Custom Backdate & Presets**: Flexible range selection including *Hari Ini*, *Kemarin (00:00–23:59)*, *24 Jam Terakhir*, *7 Hari Terakhir*, *Bulan Ini*, and custom down-to-the-minute date-time picker.
+- **Point-and-Click Time Selector & Sub-Day Presets**: 100% point-and-click date-time matrix selector, hourly presets (*1 Hour*, *3 Hours*, *6 Hours*, *12 Hours*, *24 Hours*, *Today*, *Yesterday*, *7 Days*, *This Month*), single-click 24h day picker, and instant "Now" shortcut.
+- **RouterOS Web Console Bridge**: Integrated web terminal emulator with live MikroTik passthrough authentication (zero router credentials stored on disk), contextual TAB autocomplete matching RouterOS v6, Up/Down arrow command history, anti-linger session security (auto-lock & tab-close kill), and SQLite audit trail.
 - **Reporting & Exports**: Instant downloads of rendered PNG graphs, styled Excel (`.xlsx`) workbooks with metadata banners, and raw CSV files.
+- **Clean NOC Aesthetics**: Authentic RRDtool visual styling with seamless Light and Dark Mode NOC themes (slate palette `#0F172A`, `#1E293B`, `#38BDF8`), anti-FOUC script, live collapsible recent samples table, and real-time 60-second countdown auto-refresh.
 - **Session Authentication**: Protected web dashboard with PBKDF2-HMAC-SHA256 password hashing, auto-syncing admin password from `.env`, and "Remember Me" session persistence.
 - **Zero External Database Overhead**: Powered by embedded SQLite with Write-Ahead Logging (WAL) for 100% portability across Windows 11 and Debian 13.
 
@@ -147,7 +149,7 @@ uv run mypy src
 
 ### 1. System Preparation
 ```bash
-sudo apt update && sudo apt install -y git python3 python3-pip python3-venv curl
+sudo apt update && sudo apt install -y git python3 python3-pip python3-venv curl ufw
 curl -LsSf https://astral.sh/uv/install.sh | sh
 source $HOME/.local/bin/env
 ```
@@ -155,30 +157,23 @@ source $HOME/.local/bin/env
 ### 2. Deploy Project Directory
 ```bash
 cd /home/mriazh
-git clone <REPO_URL> MRTG-Poncab
+git clone https://github.com/mriazh/MRTG-Poncab.git
 cd MRTG-Poncab
 
-# Install dependencies into virtual environment
+# Install production dependencies
 uv sync --no-dev
 cp .env.example .env
 nano .env  # configure actual router password and secret key
 
 # Initialize database
 uv run mrtg-poncab init-db
+
+# Make automated deployment script executable
+chmod +x deploy.sh
 ```
 
 ### 3. Install Systemd Services (Auto-Run on Reboot)
-
-We provide systemd units in the `systemd/` directory:
-
-#### Option A: Unified Service (Collector + Web Dashboard)
-```bash
-sudo cp systemd/mrtg-poncab.service /etc/systemd/system/
-sudo systemctl daemon-reload
-sudo systemctl enable --now mrtg-poncab.service
-```
-
-#### Option B: Split Services (Dedicated Collector & Web Workers)
+Install the production-grade split services (separate web worker and collector daemon):
 ```bash
 sudo cp systemd/mrtg-poncab-collector.service /etc/systemd/system/
 sudo cp systemd/mrtg-poncab-web.service /etc/systemd/system/
@@ -187,13 +182,33 @@ sudo systemctl enable --now mrtg-poncab-collector.service
 sudo systemctl enable --now mrtg-poncab-web.service
 ```
 
-### 4. Check Status and Logs
+### 4. Firewall & Network Access
+Allow web access through the Debian firewall:
 ```bash
-sudo systemctl status mrtg-poncab.service
-sudo journalctl -u mrtg-poncab.service -f
+sudo ufw allow 8000/tcp comment "MRTG-Poncab Web Dashboard & Console"
 ```
 
-Access dashboard: `http://<SERVER_IP>:8000`
+- **Office LAN Access**: Connect your workstation to the GMF corporate network (cable or Wi-Fi) and open:
+  `http://172.31.136.116:8000`
+- **Remote / WFH Access**: Connect your laptop to the official **Check Point VPN** client. Once connected to corporate tunnel, navigate to:
+  `http://172.31.136.116:8000`
+
+### 5. Automated 1-Click Fast Updates (`deploy.sh`)
+Whenever updates are pushed from development, update the production server with zero hassle:
+```bash
+./deploy.sh
+```
+This script pulls the latest git commits, syncs Python packages, and restarts the services within **~0.2 seconds** without losing traffic data or dropping user web sessions.
+
+### 6. Service Health & Logs
+```bash
+# Check service statuses
+sudo systemctl status mrtg-poncab-web.service
+sudo systemctl status mrtg-poncab-collector.service
+
+# Stream live collector logs
+sudo journalctl -u mrtg-poncab-collector.service -f
+```
 
 ---
 

@@ -1,0 +1,1008 @@
+{% extends "base.html" %}
+
+{% block title %}Router Console - MRTG-Poncab{% endblock %}
+
+{% block extra_styles %}
+.console-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    width: 100%;
+}
+
+/* Authentication Screen Card */
+.console-auth-card {
+    max-width: 480px;
+    margin: 3rem auto;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+    overflow: hidden;
+}
+
+.console-auth-header {
+    background: var(--header-bg);
+    padding: 1.25rem 1.5rem;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.console-auth-header h2 {
+    font-size: 1.1rem;
+    margin: 0;
+}
+
+.console-auth-body {
+    padding: 1.5rem;
+}
+
+.console-notice-box {
+    background: var(--header-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    padding: 0.75rem 1rem;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin-bottom: 1.25rem;
+    line-height: 1.4;
+}
+
+/* Terminal Window */
+.terminal-window {
+    background: #0C1017;
+    border: 1px solid #2D3748;
+    border-radius: 8px;
+    box-shadow: 0 12px 32px rgba(0,0,0,0.5);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    min-height: 580px;
+    font-family: 'Consolas', 'Courier New', 'Fira Code', monospace;
+}
+
+.terminal-topbar {
+    background: #161D2A;
+    border-bottom: 1px solid #2D3748;
+    padding: 0.5rem 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.82rem;
+    color: #94A3B8;
+}
+
+.terminal-title {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 700;
+    color: #F8FAFC;
+}
+
+.terminal-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.terminal-screen {
+    flex: 1;
+    padding: 1rem;
+    overflow-y: auto;
+    max-height: 520px;
+    min-height: 400px;
+    color: #E2E8F0;
+    font-size: 0.86rem;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-break: break-all;
+    background-color: #090D14;
+}
+
+.terminal-banner {
+    color: #38BDF8;
+    margin-bottom: 0.75rem;
+    font-weight: 600;
+}
+
+.terminal-log-entry {
+    margin-bottom: 0.5rem;
+}
+
+.terminal-cmd-echo {
+    color: #F8FAFC;
+    font-weight: 700;
+}
+
+.terminal-prompt-label {
+    color: #22C55E;
+    font-weight: 700;
+}
+
+.terminal-output-text {
+    color: #CBD5E1;
+    margin-top: 0.2rem;
+}
+
+.terminal-output-error {
+    color: #F87171;
+    margin-top: 0.2rem;
+    font-weight: 600;
+}
+
+.terminal-input-row {
+    background: #0F1623;
+    border-top: 1px solid #1E293B;
+    padding: 0.6rem 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.terminal-input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: #38BDF8;
+    font-family: 'Consolas', 'Courier New', monospace;
+    font-size: 0.9rem;
+    font-weight: 600;
+    caret-color: #22C55E;
+}
+
+.terminal-suggestions-bar {
+    background: #161D2A;
+    border-top: 1px solid #232E42;
+    padding: 0.35rem 1rem;
+    display: none;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    align-items: center;
+}
+
+.terminal-suggestion-pill {
+    background: #1E293B;
+    color: #38BDF8;
+    border: 1px solid #334155;
+    border-radius: 3px;
+    padding: 0.15rem 0.45rem;
+    font-size: 0.75rem;
+    cursor: pointer;
+    font-family: monospace;
+    transition: all 0.1s;
+}
+
+.terminal-suggestion-pill:hover,
+.terminal-suggestion-pill.selected {
+    background: #0284C7;
+    color: #FFFFFF;
+    border-color: #0284C7;
+}
+
+.terminal-quick-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    padding: 0.5rem 1rem;
+    background: #111827;
+    border-top: 1px solid #1F2937;
+    align-items: center;
+}
+
+.quick-cmd-btn {
+    background: #1F2937;
+    color: #94A3B8;
+    border: 1px solid #374151;
+    border-radius: 4px;
+    padding: 0.2rem 0.5rem;
+    font-size: 0.75rem;
+    font-family: monospace;
+    cursor: pointer;
+    transition: all 0.12s;
+}
+
+.quick-cmd-btn:hover {
+    background: #374151;
+    color: #F8FAFC;
+    border-color: #4B5563;
+}
+{% endblock %}
+
+{% block content %}
+<div class="console-container">
+
+    <!-- Screen 1: Passthrough Authentication Gate -->
+    <div id="console-auth-screen" class="console-auth-card">
+        <div class="console-auth-header">
+            <span style="font-size: 1.3rem;">🔒</span>
+            <div>
+                <h2>MikroTik RouterOS Authentication</h2>
+                <div style="font-size: 0.8rem; color: var(--text-muted);">Target: <code>{{ router_target }}</code></div>
+            </div>
+        </div>
+        <div class="console-auth-body">
+            <div class="console-notice-box">
+                🛡️ <strong>Live Passthrough Authentication:</strong><br>
+                Please enter valid MikroTik credentials (e.g. <code>admin</code>). Authentication is verified live over the RouterOS API. Zero router credentials are saved to local database or disk.
+            </div>
+
+            <div id="auth-error-alert" class="alert alert-error" style="display: none;"></div>
+
+            <form id="console-auth-form" onsubmit="handleConsoleLogin(event)">
+                <div class="form-group" style="margin-bottom: 1rem;">
+                    <label for="mikrotik-username" style="display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 0.35rem;">MikroTik Username</label>
+                    <input type="text" id="mikrotik-username" class="form-control" placeholder="admin" required autofocus style="width: 100%; padding: 0.5rem; border: 1px solid var(--border-color); border-radius: 4px; background: var(--input-bg); color: var(--text-main);">
+                </div>
+
+                <div class="form-group" style="margin-bottom: 1.25rem;">
+                    <label for="mikrotik-password" style="display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 0.35rem;">MikroTik Password</label>
+                    <input type="password" id="mikrotik-password" class="form-control" placeholder="••••••••" required style="width: 100%; padding: 0.5rem; border: 1px solid var(--border-color); border-radius: 4px; background: var(--input-bg); color: var(--text-main);">
+                </div>
+
+                <button type="submit" id="btn-auth-submit" class="btn btn-primary" style="width: 100%; padding: 0.6rem; font-weight: 700; font-size: 0.9rem;">
+                    Connect to RouterOS Console
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Screen 2: Interactive Terminal Window -->
+    <div id="console-terminal-screen" class="terminal-window" style="display: none;">
+        <!-- Topbar -->
+        <div class="terminal-topbar">
+            <div class="terminal-title">
+                <span class="status-dot up" style="width: 8px; height: 8px; background-color: #22C55E;"></span>
+                <span id="topbar-identity-title">MikroTik RouterOS</span>
+                <span style="font-weight: 400; font-size: 0.75rem; color: #64748B;">({{ router_target }})</span>
+            </div>
+            <div class="terminal-actions">
+                <span style="font-size: 0.75rem; color: #94A3B8;">Auto-lock in: <span id="inactivity-timer" style="color: #38BDF8; font-weight: 700;">05:00</span></span>
+                <button type="button" class="btn btn-secondary" onclick="handleConsoleLogout()" style="padding: 0.2rem 0.55rem; font-size: 0.75rem; background: #334155; border-color: #475467; color: #F8FAFC;">
+                    Disconnect
+                </button>
+            </div>
+        </div>
+
+        <!-- Terminal Screen Output Area -->
+        <div id="terminal-screen" class="terminal-screen">
+            <div class="terminal-banner">MikroTik RouterOS 6.49.8 (long-term) - GMF AeroAsia Pondok Cabe
+Router Architecture: mipsbe (hEX PoE / RB960PGS)
+Console Bridge active via RouterOS API. Press TAB for autocomplete or type /help.</div>
+        </div>
+
+        <!-- Autocomplete Suggestions Bar -->
+        <div id="terminal-suggestions-bar" class="terminal-suggestions-bar"></div>
+
+        <!-- Quick Shortcut Command Buttons -->
+        <div class="terminal-quick-buttons">
+            <span style="font-size: 0.72rem; color: #64748B; font-weight: 700; margin-right: 0.25rem;">QUICK:</span>
+            <button type="button" class="quick-cmd-btn" onclick="executeQuickCommand('/ip address print')">/ip address print</button>
+            <button type="button" class="quick-cmd-btn" onclick="executeQuickCommand('/interface print')">/interface print</button>
+            <button type="button" class="quick-cmd-btn" onclick="executeQuickCommand('/system resource print')">/system resource print</button>
+            <button type="button" class="quick-cmd-btn" onclick="executeQuickCommand('/ip route print')">/ip route print</button>
+            <button type="button" class="quick-cmd-btn" onclick="executeQuickCommand('/ip firewall filter print')">/ip firewall filter print</button>
+            <button type="button" class="quick-cmd-btn" onclick="executeQuickCommand('/ping 1.1.1.1 count=4')">/ping 1.1.1.1</button>
+            <button type="button" class="quick-cmd-btn" onclick="executeQuickCommand('/log print')">/log print</button>
+        </div>
+
+        <!-- Command Input Line -->
+        <div class="terminal-input-row">
+            <span id="terminal-prompt" class="terminal-prompt-label">[admin@MikroTik-PCB] &gt; </span>
+            <input type="text" id="terminal-input" class="terminal-input" autocomplete="off" spellcheck="false" placeholder="Type a RouterOS command..." autofocus>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    // Comprehensive RouterOS v6 CLI Command Tree (RB960PGS - RouterOS 6.49.8)
+    const ROUTEROS_CLI = {
+        roots: [
+            "/interface", "/ip", "/system", "/routing", "/queue", "/tool", "/log", "/user", "/ping", "/export", "/clear", "/help", "/quit", "/exit"
+        ],
+        aliases: {
+            "add": "address",
+            "addr": "address",
+            "int": "interface",
+            "inter": "interface",
+            "sys": "system",
+            "res": "resource",
+            "rb": "routerboard",
+            "router": "routerboard",
+            "fi": "firewall",
+            "fire": "firewall",
+            "fil": "filter",
+            "dhcp": "dhcp-server",
+            "dhcp-s": "dhcp-server",
+            "net": "network",
+            "eth": "ethernet",
+            "ether": "ethernet",
+            "conn": "connection"
+        },
+        menus: {
+            "/ip": {
+                submenus: ["address", "route", "firewall", "dhcp-server", "pool", "dns", "arp", "service", "hotspot", "settings", "cloud", "neighbor", "smb", "upnp", "traffic-flow", "proxy", "socks", "ipsec"],
+                verbs: ["export"]
+            },
+            "/ip/address": {
+                verbs: ["print", "add", "set", "remove", "enable", "disable", "comment", "export"],
+                params: ["address=", "interface=", "network=", "comment=", "disabled="]
+            },
+            "/ip/route": {
+                verbs: ["print", "add", "set", "remove", "enable", "disable", "comment", "export"],
+                params: ["dst-address=", "gateway=", "distance=", "check-gateway=", "routing-mark=", "comment=", "disabled="]
+            },
+            "/ip/firewall": {
+                submenus: ["filter", "nat", "mangle", "raw", "address-list", "connection"],
+                verbs: ["export"]
+            },
+            "/ip/firewall/filter": {
+                verbs: ["print", "add", "set", "remove", "enable", "disable", "comment", "export"],
+                params: ["chain=", "action=", "src-address=", "dst-address=", "protocol=", "src-port=", "dst-port=", "in-interface=", "out-interface=", "comment=", "disabled="]
+            },
+            "/ip/firewall/nat": {
+                verbs: ["print", "add", "set", "remove", "enable", "disable", "comment", "export"],
+                params: ["chain=", "action=", "to-addresses=", "to-ports=", "out-interface=", "src-address=", "dst-address=", "protocol=", "dst-port=", "comment=", "disabled="]
+            },
+            "/ip/firewall/mangle": {
+                verbs: ["print", "add", "set", "remove", "enable", "disable", "comment", "export"],
+                params: ["chain=", "action=", "new-routing-mark=", "new-connection-mark=", "passthrough=", "comment=", "disabled="]
+            },
+            "/ip/firewall/address-list": {
+                verbs: ["print", "add", "set", "remove", "enable", "disable", "comment", "export"],
+                params: ["list=", "address=", "timeout=", "comment=", "disabled="]
+            },
+            "/ip/firewall/connection": {
+                verbs: ["print", "remove"],
+                params: ["protocol=", "src-address=", "dst-address="]
+            },
+            "/ip/dhcp-server": {
+                submenus: ["network", "lease", "option", "alert"],
+                verbs: ["print", "add", "set", "remove", "enable", "disable", "comment", "export"],
+                params: ["name=", "interface=", "address-pool=", "lease-time=", "disabled="]
+            },
+            "/ip/dhcp-server/network": {
+                verbs: ["print", "add", "set", "remove", "comment", "export"],
+                params: ["address=", "gateway=", "dns-server=", "domain=", "comment="]
+            },
+            "/ip/dhcp-server/lease": {
+                verbs: ["print", "add", "set", "remove", "make-static", "comment"],
+                params: ["address=", "mac-address=", "server=", "comment=", "disabled="]
+            },
+            "/ip/pool": {
+                verbs: ["print", "add", "set", "remove", "comment", "export"],
+                params: ["name=", "ranges=", "next-pool=", "comment="]
+            },
+            "/ip/dns": {
+                submenus: ["static"],
+                verbs: ["print", "set", "export"],
+                params: ["servers=", "allow-remote-requests=", "cache-size="]
+            },
+            "/ip/arp": {
+                verbs: ["print", "add", "set", "remove", "enable", "disable", "comment"],
+                params: ["address=", "mac-address=", "interface=", "comment="]
+            },
+            "/ip/service": {
+                verbs: ["print", "set", "enable", "disable", "export"],
+                params: ["port=", "address=", "disabled="]
+            },
+            "/ip/hotspot": {
+                submenus: ["user", "profile", "active", "ip-binding", "host"],
+                verbs: ["print", "export"]
+            },
+            "/ip/hotspot/user": {
+                verbs: ["print", "add", "set", "remove", "enable", "disable", "reset-counters"],
+                params: ["name=", "password=", "profile=", "server=", "limit-uptime=", "limit-bytes-total=", "comment="]
+            },
+            "/interface": {
+                submenus: ["ethernet", "bridge", "sstp-client", "vlan", "bonding", "list", "gre", "eoip", "ipip"],
+                verbs: ["print", "set", "enable", "disable", "comment", "export"],
+                params: ["name=", "comment=", "disabled="]
+            },
+            "/interface/bridge": {
+                submenus: ["port", "vlan"],
+                verbs: ["print", "add", "set", "remove", "enable", "disable", "comment", "export"],
+                params: ["name=", "vlan-filtering=", "priority=", "comment=", "disabled="]
+            },
+            "/interface/bridge/port": {
+                verbs: ["print", "add", "set", "remove", "enable", "disable", "comment"],
+                params: ["bridge=", "interface=", "pvid=", "comment=", "disabled="]
+            },
+            "/interface/ethernet": {
+                verbs: ["print", "set", "enable", "disable", "comment", "export"],
+                params: ["name=", "speed=", "auto-negotiation=", "mac-address=", "mtu=", "comment=", "disabled="]
+            },
+            "/interface/sstp-client": {
+                verbs: ["print", "add", "set", "remove", "enable", "disable", "comment", "export"],
+                params: ["name=", "connect-to=", "user=", "password=", "profile=", "disabled=", "comment="]
+            },
+            "/interface/vlan": {
+                verbs: ["print", "add", "set", "remove", "enable", "disable", "comment"],
+                params: ["name=", "vlan-id=", "interface=", "comment=", "disabled="]
+            },
+            "/system": {
+                submenus: ["resource", "routerboard", "identity", "clock", "health", "history", "logging", "package", "script", "scheduler", "note", "ntp", "user", "reboot", "shutdown", "backup", "license"],
+                verbs: ["export"]
+            },
+            "/system/resource": {
+                verbs: ["print"],
+                params: []
+            },
+            "/system/routerboard": {
+                verbs: ["print", "upgrade"],
+                params: []
+            },
+            "/system/identity": {
+                verbs: ["print", "set"],
+                params: ["name="]
+            },
+            "/system/clock": {
+                verbs: ["print", "set"],
+                params: ["time-zone-name=", "time=", "date="]
+            },
+            "/system/health": {
+                verbs: ["print"],
+                params: []
+            },
+            "/system/logging": {
+                submenus: ["rule", "action"],
+                verbs: ["print"]
+            },
+            "/system/package": {
+                verbs: ["print", "update"],
+                params: []
+            },
+            "/system/script": {
+                verbs: ["print", "add", "set", "remove", "run"],
+                params: ["name=", "source=", "comment=", "dont-require-permissions=", "policy="]
+            },
+            "/system/scheduler": {
+                verbs: ["print", "add", "set", "remove", "enable", "disable"],
+                params: ["name=", "start-time=", "interval=", "on-event=", "comment=", "disabled="]
+            },
+            "/user": {
+                submenus: ["group", "active"],
+                verbs: ["print", "add", "set", "remove", "enable", "disable"],
+                params: ["name=", "group=", "password=", "comment=", "disabled="]
+            },
+            "/user/group": {
+                verbs: ["print", "add", "set", "remove"],
+                params: ["name=", "policy=", "comment="]
+            },
+            "/system/ntp": {
+                submenus: ["client", "server"],
+                verbs: ["print"]
+            },
+            "/system/ntp/client": {
+                verbs: ["print", "set"],
+                params: ["enabled=", "server-dns-names=", "primary-ntp="]
+            },
+            "/routing": {
+                submenus: ["bgp", "ospf", "filter", "route"],
+                verbs: []
+            },
+            "/routing/bgp": {
+                submenus: ["peer", "instance"],
+                verbs: ["print"]
+            },
+            "/routing/ospf": {
+                submenus: ["instance", "interface", "neighbor"],
+                verbs: ["print"]
+            },
+            "/queue": {
+                submenus: ["simple", "tree", "type"],
+                verbs: []
+            },
+            "/queue/simple": {
+                verbs: ["print", "add", "set", "remove", "enable", "disable", "comment"],
+                params: ["name=", "target=", "max-limit=", "comment=", "disabled="]
+            },
+            "/tool": {
+                submenus: ["ping", "traceroute", "profile", "torch", "bandwidth-test", "mac-scan", "ip-scan", "e-mail", "netwatch", "fetch"],
+                verbs: []
+            },
+            "/tool/ping": {
+                verbs: [],
+                params: ["address=", "count=", "interval=", "size=", "ttl="]
+            },
+            "/tool/traceroute": {
+                verbs: [],
+                params: ["address=", "count=", "use-dns="]
+            },
+            "/tool/netwatch": {
+                verbs: ["print", "add", "set", "remove", "enable", "disable", "comment"],
+                params: ["host=", "interval=", "timeout=", "up-script=", "down-script=", "comment=", "disabled="]
+            },
+            "/tool/fetch": {
+                verbs: [],
+                params: ["url=", "mode=", "dst-path=", "keep-result="]
+            },
+            "/log": {
+                verbs: ["print"],
+                params: ["where", "message=", "topics="]
+            },
+            "/ping": {
+                verbs: [],
+                params: ["address=", "count=", "interval=", "size=", "ttl="]
+            },
+            "/export": {
+                verbs: [],
+                params: ["compact", "file=", "hide-sensitive"]
+            }
+        }
+    };
+
+    let sessionToken = null;
+    let activePrompt = "[admin@MikroTik-PCB] > ";
+    let commandHistory = [];
+    let historyIdx = -1;
+    let inactivitySeconds = 300;
+    let inactivityInterval = null;
+
+    document.addEventListener('DOMContentLoaded', () => {
+        // Check if an existing session token is stored in sessionStorage
+        const savedToken = sessionStorage.getItem('mrtg_console_token');
+        const savedPrompt = sessionStorage.getItem('mrtg_console_prompt');
+        const savedIdentity = sessionStorage.getItem('mrtg_console_identity');
+
+        if (savedToken && savedPrompt) {
+            sessionToken = savedToken;
+            activePrompt = savedPrompt;
+            activateTerminalUI(savedIdentity || 'MikroTik');
+        } else {
+            showAuthGate();
+        }
+
+        // Terminal input keyboard handling (Enter, Tab, Up, Down)
+        const termInput = document.getElementById('terminal-input');
+        if (termInput) {
+            termInput.addEventListener('keydown', handleTerminalKeydown);
+            termInput.addEventListener('input', () => {
+                resetInactivityTimer();
+                hideSuggestions();
+            });
+        }
+
+        // Reset inactivity timer on any user click or keypress
+        window.addEventListener('click', resetInactivityTimer);
+        window.addEventListener('keydown', resetInactivityTimer);
+
+        // Security Anti-Linger: Terminate session on tab close or navigation
+        window.addEventListener('beforeunload', () => {
+            if (sessionToken) {
+                const payload = JSON.stringify({ token: sessionToken });
+                if (navigator.sendBeacon) {
+                    navigator.sendBeacon('/api/console/terminate', new Blob([payload], { type: 'application/json' }));
+                }
+            }
+        });
+    });
+
+    function showAuthGate() {
+        document.getElementById('console-auth-screen').style.display = 'block';
+        document.getElementById('console-terminal-screen').style.display = 'none';
+        if (inactivityInterval) clearInterval(inactivityInterval);
+    }
+
+    function activateTerminalUI(identity) {
+        document.getElementById('console-auth-screen').style.display = 'none';
+        document.getElementById('console-terminal-screen').style.display = 'flex';
+
+        const promptEl = document.getElementById('terminal-prompt');
+        if (promptEl) promptEl.textContent = activePrompt;
+
+        const titleEl = document.getElementById('topbar-identity-title');
+        if (titleEl) titleEl.textContent = identity ? `MikroTik (${identity})` : 'MikroTik RouterOS';
+
+        const inputEl = document.getElementById('terminal-input');
+        if (inputEl) inputEl.focus();
+
+        startInactivityTimer();
+    }
+
+    async function handleConsoleLogin(event) {
+        event.preventDefault();
+        const usernameInput = document.getElementById('mikrotik-username');
+        const passwordInput = document.getElementById('mikrotik-password');
+        const errorAlert = document.getElementById('auth-error-alert');
+        const submitBtn = document.getElementById('btn-auth-submit');
+
+        errorAlert.style.display = 'none';
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Verifying with RouterOS...';
+
+        try {
+            const resp = await fetch('/api/console/auth', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    username: usernameInput.value.trim(),
+                    password: passwordInput.value
+                })
+            });
+            const data = await resp.json();
+
+            if (data.success && data.token) {
+                sessionToken = data.token;
+                activePrompt = data.prompt || `[${data.username}@${data.identity}] > `;
+                sessionStorage.setItem('mrtg_console_token', sessionToken);
+                sessionStorage.setItem('mrtg_console_prompt', activePrompt);
+                sessionStorage.setItem('mrtg_console_identity', data.identity || 'MikroTik');
+                passwordInput.value = '';
+                activateTerminalUI(data.identity);
+            } else {
+                errorAlert.textContent = data.error || 'Authentication failed. Please check credentials.';
+                errorAlert.style.display = 'block';
+            }
+        } catch (err) {
+            errorAlert.textContent = 'Network error connecting to MRTG backend.';
+            errorAlert.style.display = 'block';
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Connect to RouterOS Console';
+        }
+    }
+
+    async function handleConsoleLogout() {
+        if (sessionToken) {
+            try {
+                await fetch('/api/console/terminate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ token: sessionToken })
+                });
+            } catch (e) {}
+        }
+        sessionToken = null;
+        sessionStorage.removeItem('mrtg_console_token');
+        sessionStorage.removeItem('mrtg_console_prompt');
+        sessionStorage.removeItem('mrtg_console_identity');
+        showAuthGate();
+    }
+
+    function resetInactivityTimer() {
+        inactivitySeconds = 300;
+        updateTimerDisplay();
+    }
+
+    function startInactivityTimer() {
+        if (inactivityInterval) clearInterval(inactivityInterval);
+        inactivitySeconds = 300;
+        updateTimerDisplay();
+        inactivityInterval = setInterval(() => {
+            inactivitySeconds -= 1;
+            updateTimerDisplay();
+            if (inactivitySeconds <= 0) {
+                appendOutputText("\n[Session auto-locked due to 5 minutes of inactivity]\n", true);
+                handleConsoleLogout();
+            }
+        }, 1000);
+    }
+
+    function updateTimerDisplay() {
+        const timerEl = document.getElementById('inactivity-timer');
+        if (timerEl) {
+            const m = Math.floor(inactivitySeconds / 60);
+            const s = inactivitySeconds % 60;
+            timerEl.textContent = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+        }
+    }
+
+    function handleTerminalKeydown(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            const input = e.target;
+            const cmd = input.value.trim();
+            if (cmd) {
+                commandHistory.push(cmd);
+                historyIdx = commandHistory.length;
+                input.value = '';
+                hideSuggestions();
+                executeCommand(cmd);
+            }
+        } else if (e.key === 'Tab') {
+            e.preventDefault();
+            handleTabCompletion(e.target);
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            if (commandHistory.length > 0 && historyIdx > 0) {
+                historyIdx -= 1;
+                e.target.value = commandHistory[historyIdx];
+            }
+        } else if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            if (commandHistory.length > 0 && historyIdx < commandHistory.length - 1) {
+                historyIdx += 1;
+                e.target.value = commandHistory[historyIdx];
+            } else {
+                historyIdx = commandHistory.length;
+                e.target.value = '';
+            }
+        }
+    }
+
+    // Contextual TAB Autocomplete Handler
+    function handleTabCompletion(inputEl) {
+        const text = inputEl.value;
+        const cursorPos = inputEl.selectionStart;
+        const textUpToCursor = text.slice(0, cursorPos);
+        const endsWithSpace = textUpToCursor.endsWith(" ");
+        const rawTokens = textUpToCursor.trim().split(/\s+/).filter(Boolean);
+
+        if (rawTokens.length === 0) {
+            showSuggestions(ROUTEROS_CLI.roots, (chosen) => {
+                inputEl.value = chosen + " ";
+                inputEl.focus();
+                hideSuggestions();
+            });
+            return;
+        }
+
+        const VERBS_SET = new Set(["print", "add", "set", "remove", "enable", "disable", "comment", "export", "run", "reset"]);
+
+        let prefix = "";
+        let candidates = [];
+
+        if (endsWithSpace) {
+            // User has completed typing current tokens; suggest options for the NEXT word!
+            prefix = "";
+
+            // Expand tokens safely (do not convert "add" to "address" if it's an action verb!)
+            const tokens = [];
+            for (let i = 0; i < rawTokens.length; i++) {
+                const raw = rawTokens[i].replace(/^\//, "").toLowerCase();
+                const prev = i > 0 ? tokens[i - 1] : "";
+                if (raw === "add" && prev === "ip") {
+                    tokens.push("address");
+                } else if (raw === "add") {
+                    tokens.push("add");
+                } else {
+                    tokens.push(ROUTEROS_CLI.aliases[raw] || raw);
+                }
+            }
+
+            // Find if a verb was already used
+            let verbIdx = -1;
+            for (let i = 0; i < tokens.length; i++) {
+                if (VERBS_SET.has(tokens[i])) {
+                    verbIdx = i;
+                    break;
+                }
+            }
+
+            // Check special commands like /ping or /tool ping
+            const isPingCmd = (tokens[0] === "ping") || (tokens[0] === "tool" && tokens[1] === "ping");
+            if (isPingCmd) {
+                const PING_PARAMS = ["count=", "interval=", "size=", "ttl="];
+                const usedParams = new Set(
+                    rawTokens.filter(t => t.includes("=")).map(t => t.split("=")[0] + "=")
+                );
+                candidates = PING_PARAMS.filter(p => !usedParams.has(p));
+            } else if (verbIdx !== -1) {
+                const menuPath = "/" + tokens.slice(0, verbIdx).join("/");
+                const verb = tokens[verbIdx];
+                if (ROUTEROS_CLI.menus[menuPath]) {
+                    const node = ROUTEROS_CLI.menus[menuPath];
+                    if (verb === "add" || verb === "set") {
+                        const usedParams = new Set(
+                            rawTokens.slice(verbIdx + 1).filter(t => t.includes("=")).map(t => t.split("=")[0] + "=")
+                        );
+                        candidates = (node.params || ["disabled=", "comment="]).filter(p => !usedParams.has(p));
+                    } else if (verb === "print") {
+                        candidates = ["where", "detail", "brief", "from=", "proplist="];
+                    } else if (verb === "enable" || verb === "disable" || verb === "remove" || verb === "comment") {
+                        candidates = ["numbers="];
+                    }
+                }
+            } else {
+                const currentPath = "/" + tokens.join("/");
+                if (ROUTEROS_CLI.menus[currentPath]) {
+                    const node = ROUTEROS_CLI.menus[currentPath];
+                    candidates = [
+                        ...(node.submenus || []),
+                        ...(node.verbs || [])
+                    ];
+                }
+            }
+        } else {
+            // User is currently typing the last token; filter candidates starting with lastToken
+            prefix = rawTokens[rawTokens.length - 1];
+            const cleanPrefix = prefix.replace(/^\//, "").toLowerCase();
+
+            if (rawTokens.length === 1) {
+                candidates = ROUTEROS_CLI.roots.filter(r => r.startsWith(prefix) || r.startsWith("/" + prefix));
+            } else {
+                const precedingRaw = rawTokens.slice(0, rawTokens.length - 1);
+                const tokens = [];
+                for (let i = 0; i < precedingRaw.length; i++) {
+                    const raw = precedingRaw[i].replace(/^\//, "").toLowerCase();
+                    const prev = i > 0 ? tokens[i - 1] : "";
+                    if (raw === "add" && prev === "ip") {
+                        tokens.push("address");
+                    } else if (raw === "add") {
+                        tokens.push("add");
+                    } else {
+                        tokens.push(ROUTEROS_CLI.aliases[raw] || raw);
+                    }
+                }
+
+                let verbIdx = -1;
+                for (let i = 0; i < tokens.length; i++) {
+                    if (VERBS_SET.has(tokens[i])) {
+                        verbIdx = i;
+                        break;
+                    }
+                }
+
+                const isPingCmd = (tokens[0] === "ping") || (tokens[0] === "tool" && tokens[1] === "ping");
+                if (isPingCmd) {
+                    const PING_PARAMS = ["count=", "interval=", "size=", "ttl="];
+                    candidates = PING_PARAMS.filter(p => p.startsWith(cleanPrefix));
+                } else if (verbIdx !== -1) {
+                    const menuPath = "/" + tokens.slice(0, verbIdx).join("/");
+                    const verb = tokens[verbIdx];
+                    if (ROUTEROS_CLI.menus[menuPath]) {
+                        const node = ROUTEROS_CLI.menus[menuPath];
+                        if (verb === "add" || verb === "set") {
+                            candidates = (node.params || []).filter(p => p.startsWith(cleanPrefix));
+                        }
+                    }
+                } else {
+                    const parentPath = "/" + tokens.join("/");
+                    if (ROUTEROS_CLI.menus[parentPath]) {
+                        const node = ROUTEROS_CLI.menus[parentPath];
+                        const pool = [
+                            ...(node.submenus || []),
+                            ...(node.verbs || [])
+                        ];
+                        candidates = pool.filter(item => item.toLowerCase().startsWith(cleanPrefix));
+                    }
+                }
+            }
+        }
+
+        if (candidates.length === 1) {
+            const completed = candidates[0];
+            const replaceStart = textUpToCursor.length - prefix.length;
+            const insertText = completed + (completed.endsWith("=") ? "" : " ");
+            inputEl.value = text.slice(0, replaceStart) + insertText + text.slice(cursorPos);
+            hideSuggestions();
+        } else if (candidates.length > 1) {
+            showSuggestions(candidates, (chosen) => {
+                const replaceStart = textUpToCursor.length - prefix.length;
+                const insertText = chosen + (chosen.endsWith("=") ? "" : " ");
+                inputEl.value = text.slice(0, replaceStart) + insertText + text.slice(cursorPos);
+                inputEl.focus();
+                hideSuggestions();
+            });
+        } else {
+            hideSuggestions();
+        }
+    }
+
+    function showSuggestions(list, onSelect) {
+        const bar = document.getElementById('terminal-suggestions-bar');
+        if (!bar) return;
+        bar.innerHTML = '<span style="font-size: 0.72rem; color: #94A3B8; margin-right: 0.25rem;">TAB SUGGESTIONS:</span>';
+        list.slice(0, 10).forEach(item => {
+            const pill = document.createElement('span');
+            pill.className = 'terminal-suggestion-pill';
+            pill.textContent = item;
+            pill.onclick = () => onSelect(item);
+            bar.appendChild(pill);
+        });
+        bar.style.display = 'flex';
+    }
+
+    function hideSuggestions() {
+        const bar = document.getElementById('terminal-suggestions-bar');
+        if (bar) bar.style.display = 'none';
+    }
+
+    function executeQuickCommand(cmd) {
+        const input = document.getElementById('terminal-input');
+        if (input) {
+            input.value = '';
+            executeCommand(cmd);
+        }
+    }
+
+    async function executeCommand(cmd) {
+        if (!sessionToken) {
+            showAuthGate();
+            return;
+        }
+
+        // Echo command to screen
+        appendCommandEcho(cmd);
+
+        if (cmd === '/clear' || cmd === 'clear') {
+            const screen = document.getElementById('terminal-screen');
+            if (screen) screen.innerHTML = '';
+            return;
+        }
+
+        if (cmd === 'quit' || cmd === 'exit' || cmd === '/quit' || cmd === '/exit') {
+            appendOutputText("Connection closed by user.\nDisconnecting session...");
+            setTimeout(() => {
+                handleConsoleLogout();
+            }, 600);
+            return;
+        }
+
+        if (cmd === '/help' || cmd === 'help') {
+            appendOutputText(
+                "RouterOS Console Help:\n" +
+                "  /ip address print                 List IP addresses\n" +
+                "  /interface print                  List all interfaces\n" +
+                "  /system resource print            View CPU, memory, uptime\n" +
+                "  /ping 1.1.1.1 count=4             Ping target host\n" +
+                "  /clear                            Clear screen\n" +
+                "  quit / exit                       Close console session\n"
+            );
+            return;
+        }
+
+        try {
+            const resp = await fetch('/api/console/execute', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    token: sessionToken,
+                    command: cmd
+                })
+            });
+            const data = await resp.json();
+
+            if (data.session_expired) {
+                appendOutputText("\n[Session expired. Please log in again.]\n", true);
+                handleConsoleLogout();
+                return;
+            }
+
+            if (data.prompt) {
+                activePrompt = data.prompt;
+                const promptEl = document.getElementById('terminal-prompt');
+                if (promptEl) promptEl.textContent = activePrompt;
+            }
+
+            if (data.success) {
+                appendOutputText(data.output);
+            } else {
+                appendOutputText(data.output || data.error || 'Execution failed', true);
+            }
+        } catch (err) {
+            appendOutputText("Network error executing command.", true);
+        }
+    }
+
+    function appendCommandEcho(cmd) {
+        const screen = document.getElementById('terminal-screen');
+        if (!screen) return;
+        const entry = document.createElement('div');
+        entry.className = 'terminal-log-entry';
+        entry.innerHTML = `<span class="terminal-prompt-label">${escapeHtml(activePrompt)}</span><span class="terminal-cmd-echo">${escapeHtml(cmd)}</span>`;
+        screen.appendChild(entry);
+        screen.scrollTop = screen.scrollHeight;
+    }
+
+    function appendOutputText(text, isError = false) {
+        const screen = document.getElementById('terminal-screen');
+        if (!screen || !text) return;
+        const outDiv = document.createElement('div');
+        outDiv.className = isError ? 'terminal-output-error' : 'terminal-output-text';
+        outDiv.textContent = text;
+        screen.appendChild(outDiv);
+        screen.scrollTop = screen.scrollHeight;
+    }
+
+    function escapeHtml(str) {
+        return (str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+</script>
+{% endblock %}

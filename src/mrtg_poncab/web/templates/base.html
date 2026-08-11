@@ -223,6 +223,10 @@
             <span class="brand-subtitle">GMF AeroAsia Pondok Cabe</span>
         </div>
         <div class="nav-actions">
+            {% if current_user %}
+                <a href="/" class="btn btn-outline-light" style="padding: 0.35rem 0.65rem; font-size: 0.8rem; text-decoration: none;">📊 Dashboard</a>
+                <a href="/console" class="btn btn-outline-light" style="padding: 0.35rem 0.65rem; font-size: 0.8rem; text-decoration: none;">💻 Console</a>
+            {% endif %}
             <button id="theme-toggle" class="btn btn-outline-light" type="button" aria-label="Toggle Theme" style="padding: 0.35rem 0.65rem; font-size: 0.8rem;">
                 <span id="theme-toggle-icon">🌙</span>
                 <span id="theme-toggle-text">Dark</span>

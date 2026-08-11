@@ -83,7 +83,7 @@ def test_login_success_and_session(client_with_db: TestClient) -> None:
     assert "MRTG-Poncab" in dash_resp.text
     assert "Traffic WAN" in dash_resp.text
     assert "theme-toggle" in dash_resp.text
-    assert "Riwayat Sampel Trafik Terakhir" in dash_resp.text
+    assert "Recent Traffic Samples" in dash_resp.text
     assert "countdown-timer" in dash_resp.text
 
 
@@ -181,7 +181,7 @@ def test_dashboard_with_subday_presets_and_fullday(client_with_db: TestClient) -
     resp_1h = client_with_db.get("/?preset=1h", cookies=cookies)
     assert resp_1h.status_code == 200
     assert "active" in resp_1h.text
-    assert "1 Jam" in resp_1h.text
+    assert "1 Hour" in resp_1h.text
     assert "matrix-modal-backdrop" in resp_1h.text
     assert "matrix-hours-grid" in resp_1h.text
     assert "matrix-minutes-grid" in resp_1h.text
@@ -214,4 +214,49 @@ def test_api_graph_and_exports_with_fullday(client_with_db: TestClient) -> None:
     xlsx_resp = client_with_db.get("/api/export/excel?fullday=2026-09-15", cookies=cookies)
     assert xlsx_resp.status_code == 200
     assert "2026-09-15" in xlsx_resp.headers["content-disposition"]
+
+
+def test_console_page_and_endpoints(client_with_db: TestClient) -> None:
+    """GET /console renders terminal UI and API endpoints enforce auth and validation."""
+    # Unauthenticated GET /console redirects to /login
+    unauth_resp = client_with_db.get("/console", headers={"Accept": "text/html"})
+    assert unauth_resp.status_code == 307
+    assert "/login" in unauth_resp.headers["location"]
+
+    login_resp = client_with_db.post("/login", data={"username": "admin", "password": "admin123"})
+    cookies = login_resp.cookies
+
+    # Authenticated GET /console
+    console_resp = client_with_db.get("/console", cookies=cookies)
+    assert console_resp.status_code == 200
+    assert "RouterOS Authentication" in console_resp.text
+    assert "terminal-screen" in console_resp.text
+    assert "terminal-input" in console_resp.text
+    assert "terminal-suggestions-bar" in console_resp.text
+
+    # Execute with invalid/expired token returns session_expired: True
+    exec_resp = client_with_db.post(
+        "/api/console/execute",
+        json={"token": "invalid_fake_token", "command": "/ip address print"},
+        cookies=cookies,
+    )
+    assert exec_resp.status_code == 200
+    data = exec_resp.json()
+    assert data["success"] is False
+    assert data["session_expired"] is True
+
+    # Terminate token endpoint
+    term_resp = client_with_db.post(
+        "/api/console/terminate",
+        json={"token": "any_token"},
+        cookies=cookies,
+    )
+    assert term_resp.status_code == 200
+    assert term_resp.json()["success"] is True
+
+    # Get console logs endpoint
+    logs_resp = client_with_db.get("/api/console/logs", cookies=cookies)
+    assert logs_resp.status_code == 200
+    assert "logs" in logs_resp.json()
+
 
