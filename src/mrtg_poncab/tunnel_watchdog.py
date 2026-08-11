@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-import re
 import socket
 import time
 from typing import Any
@@ -129,8 +128,8 @@ class TunnelWatchdog:
                             "message": "Invalid tunnel.web.id login credentials",
                         }
 
-                # 2. Navigate to service details
-                detail_url = f"{MEMBER_BASE_URL}/layanan-detail.php?id={srv_id}"
+                # 2. Navigate to service details & fetch live status
+                detail_url = f"{MEMBER_BASE_URL}/layanan.php?id={srv_id}"
                 detail_resp = client.get(detail_url)
                 body = detail_resp.text
 
@@ -138,18 +137,25 @@ class TunnelWatchdog:
                 has_tidak_terhubung = "tidak terhubung" in body.lower()
                 has_terhubung = "terhubung" in body.lower() and not has_tidak_terhubung
 
-                # Detect restart button or form
-                restart_url = None
-                restart_match = re.search(
-                    r'href=[\'"]([^\'"]*restart[^\'"]*)[\'"]', body, re.IGNORECASE
+                # Exact API endpoints discovered from portal app.js
+                status_api_url = f"{MEMBER_BASE_URL}/api/api-layanan-status.php?id={srv_id}"
+                diagnosa_restart_url = (
+                    f"{MEMBER_BASE_URL}/api/api-layanan-diagnosa.php?id={srv_id}"
                 )
-                if restart_match:
-                    found_link = restart_match.group(1)
-                    restart_url = (
-                        found_link
-                        if found_link.startswith("http")
-                        else f"{MEMBER_BASE_URL}/{found_link.lstrip('/')}"
-                    )
+
+                # Try querying status API directly if available
+                try:
+                    status_api_resp = client.get(status_api_url)
+                    if status_api_resp.status_code == 200:
+                        status_json = status_api_resp.json()
+                        raw_status = str(status_json.get("status", "")).lower()
+                        if "error" in raw_status:
+                            has_koneksi_error = True
+                        elif "terhubung" in raw_status and "tidak" not in raw_status:
+                            has_terhubung = True
+                            has_tidak_terhubung = False
+                except Exception:
+                    pass
 
                 service_status = "UNKNOWN"
                 if has_koneksi_error:
@@ -164,7 +170,7 @@ class TunnelWatchdog:
                     "code": service_status,
                     "service_id": srv_id,
                     "needs_restart": has_koneksi_error,
-                    "restart_url": restart_url,
+                    "restart_url": diagnosa_restart_url,
                     "message": f"Service #{srv_id} status on tunnel.web.id: {service_status}",
                     "client": client,
                     "raw_body": body,
@@ -224,17 +230,23 @@ class TunnelWatchdog:
             client = portal.get("client")
             if restart_url and client:
                 try:
-                    client.get(restart_url)
+                    resp = client.get(restart_url)
                     self.last_restart_epoch = now
+                    msg = f"Triggered Restart VPN for service #{settings.tunnel_web_service_id}."
+                    try:
+                        resp_json = resp.json()
+                        if "message" in resp_json:
+                            msg = f"Restart result: {resp_json['message']}"
+                    except Exception:
+                        pass
                     logger.info(
-                        "Tunnel #%s restart triggered successfully via watchdog",
+                        "Tunnel #%s restart executed: %s",
                         settings.tunnel_web_service_id,
+                        msg,
                     )
                     return {
                         "action": "RESTARTED",
-                        "message": (
-                            f"Triggered Restart VPN for service #{settings.tunnel_web_service_id}."
-                        ),
+                        "message": msg,
                     }
                 except Exception as e:
                     return {"action": "FAILED", "message": f"Error calling restart URL: {e}"}
