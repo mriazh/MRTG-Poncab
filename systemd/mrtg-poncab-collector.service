@@ -7,9 +7,9 @@ Wants=network-online.target
 Type=simple
 User=mriazh
 Group=mriazh
-WorkingDirectory=/home/mriazh/MRTG-Poncab
-EnvironmentFile=-/home/mriazh/MRTG-Poncab/.env
-ExecStart=/home/mriazh/MRTG-Poncab/.venv/bin/python -m mrtg_poncab collect
+WorkingDirectory=/home/mriazh/Github-PC/MRTG-Poncab
+EnvironmentFile=-/home/mriazh/Github-PC/MRTG-Poncab/.env
+ExecStart=/home/mriazh/Github-PC/MRTG-Poncab/.venv/bin/python -m mrtg_poncab collect
 Restart=always
 RestartSec=10s
 
@@ -17,7 +17,7 @@ RestartSec=10s
 NoNewPrivileges=true
 ProtectSystem=strict
 ProtectHome=read-only
-ReadWritePaths=/home/mriazh/MRTG-Poncab/data /home/mriazh/MRTG-Poncab
+ReadWritePaths=/home/mriazh/Github-PC/MRTG-Poncab/data /home/mriazh/Github-PC/MRTG-Poncab
 
 [Install]
 WantedBy=multi-user.target
