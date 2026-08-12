@@ -68,9 +68,16 @@ class Settings(BaseSettings):
     # tunnel.web.id watchdog & auto-healing
     tunnel_web_email: str | None = None
     tunnel_web_password: str | None = None
-    tunnel_web_service_id: str = "46486"
-    tunnel_auto_restart: bool = True
+    tunnel_web_service_id: str | None = None
+    tunnel_auto_restart: bool = False
     tunnel_restart_cooldown_minutes: int = 30
+
+    # WhatsApp GOWA Alert Notification
+    wa_alert_enabled: bool = False
+    wa_gateway_url: str = "http://localhost:3000"
+    wa_device_id: str | None = None
+    wa_target_jid: str | None = None
+    wa_fail_threshold: int = 2
 
     @property
     def poll_interval(self) -> int:

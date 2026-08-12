@@ -101,11 +101,11 @@ class TunnelWatchdog:
         user_pwd = password or settings.tunnel_web_password
         srv_id = service_id or settings.tunnel_web_service_id
 
-        if not user_email or not user_pwd:
+        if not user_email or not user_pwd or not srv_id:
             return {
                 "success": False,
                 "code": "NO_CREDENTIALS",
-                "message": "TUNNEL_WEB_EMAIL or TUNNEL_WEB_PASSWORD not configured in .env",
+                "message": "TUNNEL_WEB_EMAIL, TUNNEL_WEB_PASSWORD, or SERVICE_ID not set in .env",
             }
 
         try:

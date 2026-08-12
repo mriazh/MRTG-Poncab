@@ -198,6 +198,10 @@ class TrafficCollector:
         self._last_tx_bytes: int | None = None
         self._last_epoch: int | float | None = None
 
+        # Watchdog and notification state
+        self._consecutive_failures: int = 0
+        self._is_currently_down: bool = False
+
         # Seed previous state from database if available
         self._seed_last_state()
 
@@ -247,10 +251,56 @@ class TrafficCollector:
                 self._last_tx_bytes = curr_tx
                 self._last_epoch = now_epoch
 
+            # Send resolved alert if recovering from a DOWN state
+            if self._is_currently_down:
+                try:
+                    from .notifier import format_resolved_alert, send_whatsapp_message
+
+                    resolved_msg = format_resolved_alert(
+                        uptime=uptime or "unknown",
+                        rx_bps=rate.rx_bps,
+                        tx_bps=rate.tx_bps,
+                        router_name=f"WAN ({self.config.routeros_interface})",
+                    )
+                    send_whatsapp_message(resolved_msg)
+                except Exception as alert_err:
+                    logger.warning("Failed to send WhatsApp resolved alert: %s", alert_err)
+                self._is_currently_down = False
+
+            self._consecutive_failures = 0
             return sample
 
         except Exception as exc:
             logger.warning("Collector failed to poll RouterOS API: %s", exc)
+            self._consecutive_failures += 1
+
+            # Dispatch DOWN alert when failure threshold is reached
+            if (
+                self.config.wa_alert_enabled
+                and self._consecutive_failures >= self.config.wa_fail_threshold
+                and not self._is_currently_down
+            ):
+                self._is_currently_down = True
+                try:
+                    from .notifier import format_down_alert, send_whatsapp_message
+
+                    down_msg = format_down_alert(
+                        router_name=f"WAN ({self.config.routeros_interface})",
+                        reason=f"API polling connection failed: {exc}",
+                    )
+                    send_whatsapp_message(down_msg)
+                except Exception as alert_err:
+                    logger.warning("Failed to send WhatsApp down alert: %s", alert_err)
+
+            # Check watchdog auto-healing if configured
+            if self.config.tunnel_auto_restart and self.config.tunnel_web_email:
+                try:
+                    from .tunnel_watchdog import tunnel_watchdog
+
+                    tunnel_watchdog.auto_heal_if_needed()
+                except Exception as heal_err:
+                    logger.debug("Tunnel auto-heal check error: %s", heal_err)
+
             # Record a DOWN sample using last known byte counters
             down_sample = TrafficSample(
                 timestamp=timestamp_str,
