@@ -117,6 +117,39 @@ def format_resolved_alert(
     )
 
 
+def format_startup_notice(
+    node_name: str = "Debian Server (Office Host)",
+    target: str = "id-04.tunnel.web.id:5336 (WAN 150M)",
+    timestamp: str | None = None,
+) -> str:
+    """Compose informational daemon startup / system online notice."""
+    ts = timestamp or _now_wib_str()
+    return (
+        "🟢 *[NOC SYSTEM ONLINE] MRTG Collector Daemon Started*\n\n"
+        f"💻 *Node:* {node_name}\n"
+        f"🎯 *Target:* {target}\n"
+        f"⏱ *Time:* {ts} WIB\n"
+        "Status: Collector daemon active and monitoring traffic samples.\n\n"
+        "📊 *Dashboard:* https://mrtg.mriazh.my.id"
+    )
+
+
+def format_shutdown_notice(
+    node_name: str = "Debian Server (Office Host)",
+    reason: str = "Daemon stopping for update or maintenance restart.",
+    timestamp: str | None = None,
+) -> str:
+    """Compose informational daemon graceful shutdown notice."""
+    ts = timestamp or _now_wib_str()
+    return (
+        "⏸️ *[NOC SYSTEM STOPPED] MRTG Collector Daemon Stopping*\n\n"
+        f"💻 *Node:* {node_name}\n"
+        f"⏱ *Time:* {ts} WIB\n"
+        f"ℹ️ *Note:* {reason}\n"
+        "If intentional (deploy/update), recovery notice will follow automatically."
+    )
+
+
 def send_whatsapp_message(
     message: str,
     target_jid: str | None = None,

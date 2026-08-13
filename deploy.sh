@@ -13,7 +13,17 @@ echo "🚀 [MRTG-Poncab] Deploying latest updates on Debian server"
 echo "=========================================================="
 
 echo "📥 1/4 Pulling latest commits from GitHub..."
-git pull origin master
+MAX_ATTEMPTS=3
+ATTEMPT=1
+until git pull origin master; do
+    if [ $ATTEMPT -ge $MAX_ATTEMPTS ]; then
+        echo "❌ [DEPLOY ERROR] Git pull failed after $MAX_ATTEMPTS attempts. Deployment aborted."
+        exit 1
+    fi
+    echo "⚠️ Network delay fetching from GitHub. Retrying in 3 seconds ($ATTEMPT/$MAX_ATTEMPTS)..."
+    sleep 3
+    ATTEMPT=$((ATTEMPT + 1))
+done
 
 echo "📦 2/4 Syncing dependencies with uv..."
 if command -v uv >/dev/null 2>&1; then

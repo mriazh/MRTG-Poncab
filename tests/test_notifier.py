@@ -7,6 +7,8 @@ from unittest.mock import MagicMock, patch
 from mrtg_poncab.notifier import (
     format_down_alert,
     format_resolved_alert,
+    format_shutdown_notice,
+    format_startup_notice,
     is_recent_reboot,
     send_whatsapp_message,
 )
@@ -88,3 +90,24 @@ def test_send_whatsapp_message_success_mocked() -> None:
     ):
         result = send_whatsapp_message("Test Alert Message")
         assert result is True
+
+
+def test_format_startup_and_shutdown_notices() -> None:
+    """format_startup_notice and format_shutdown_notice generate structured lifecycle alerts."""
+    start_msg = format_startup_notice(
+        node_name="Test Node",
+        target="10.0.0.1:8728",
+        timestamp="2026-09-20 20:00:00",
+    )
+    assert "[NOC SYSTEM ONLINE]" in start_msg
+    assert "Test Node" in start_msg
+    assert "10.0.0.1:8728" in start_msg
+
+    stop_msg = format_shutdown_notice(
+        node_name="Test Node",
+        reason="Maintenance restart",
+        timestamp="2026-09-20 20:01:00",
+    )
+    assert "[NOC SYSTEM STOPPED]" in stop_msg
+    assert "Maintenance restart" in stop_msg
+

@@ -339,6 +339,19 @@ class TrafficCollector:
             poll_interval,
         )
 
+        # Dispatch online startup notice if WhatsApp alerts are enabled
+        if self.config.wa_alert_enabled:
+            try:
+                from .notifier import format_startup_notice, send_whatsapp_message
+
+                start_msg = format_startup_notice(
+                    node_name="Debian Host (Poncab Monitor)",
+                    target=f"{self.config.routeros_host}:{self.config.routeros_port}",
+                )
+                send_whatsapp_message(start_msg)
+            except Exception as start_err:
+                logger.debug("Failed to dispatch startup notification: %s", start_err)
+
         while True:
             if stop_event is not None and stop_event.is_set():
                 break
@@ -354,6 +367,19 @@ class TrafficCollector:
                 if stop_event is not None and stop_event.is_set():
                     break
                 time.sleep(1)
+
+        # Dispatch graceful shutdown notice if WhatsApp alerts are enabled
+        if self.config.wa_alert_enabled:
+            try:
+                from .notifier import format_shutdown_notice, send_whatsapp_message
+
+                stop_msg = format_shutdown_notice(
+                    node_name="Debian Host (Poncab Monitor)",
+                    reason="Daemon stopping for maintenance or service reload.",
+                )
+                send_whatsapp_message(stop_msg)
+            except Exception as stop_err:
+                logger.debug("Failed to dispatch shutdown notification: %s", stop_err)
 
         self.client.disconnect()
         logger.info("Collector stopped after %d iterations", iterations)
