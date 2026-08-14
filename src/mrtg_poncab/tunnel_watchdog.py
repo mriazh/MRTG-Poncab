@@ -14,7 +14,7 @@ from .config import settings
 logger = logging.getLogger(__name__)
 
 MEMBER_BASE_URL = "https://member.tunnel.web.id"
-LOGIN_URL = f"{MEMBER_BASE_URL}/login.php"
+LOGIN_URL = f"{MEMBER_BASE_URL}/api/api-login.php"
 
 
 class TunnelWatchdog:
@@ -110,22 +110,27 @@ class TunnelWatchdog:
 
         try:
             with httpx.Client(timeout=15.0, follow_redirects=True) as client:
-                # 1. Login to member portal
+                # 1. Login to member portal via AJAX API endpoint
                 login_resp = client.post(
                     LOGIN_URL,
                     data={"email": user_email, "password": user_pwd},
                 )
-                is_logged_in = (
-                    "logout.php" in login_resp.text
-                    or "dashboard" in login_resp.url.path.lower()
-                )
-                if not is_logged_in:
-                    lower_text = login_resp.text.lower()
-                    if "password salah" in lower_text or "tidak terdaftar" in lower_text:
+                try:
+                    login_json = login_resp.json()
+                    if str(login_json.get("code", "")) != "200":
                         return {
                             "success": False,
                             "code": "AUTH_FAILED",
-                            "message": "Invalid tunnel.web.id login credentials",
+                            "message": login_json.get(
+                                "message", "Invalid tunnel.web.id credentials"
+                            ),
+                        }
+                except Exception:
+                    if login_resp.status_code != 200:
+                        return {
+                            "success": False,
+                            "code": "AUTH_FAILED",
+                            "message": f"Login endpoint returned HTTP {login_resp.status_code}",
                         }
 
                 # 2. Navigate to service details & fetch live status
