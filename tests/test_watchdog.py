@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import time
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from mrtg_poncab.tunnel_watchdog import TunnelWatchdog
 
@@ -46,9 +46,42 @@ def test_watchdog_cooldown_guard() -> None:
         patch.object(
             wd,
             "inspect_member_portal",
-            return_value={"success": True, "needs_restart": True, "restart_url": "http://example.com/restart"},
+            return_value={
+                "success": True,
+                "needs_restart": True,
+                "restart_url": "http://example.com/restart",
+                "cookies": {"PHPSESSID": "abc123xyz"},
+            },
         ),
     ):
         res = wd.auto_heal_if_needed()
         assert res["action"] == "COOLDOWN"
         assert "cooldown active" in res["message"]
+
+
+def test_watchdog_auto_heal_restart_success() -> None:
+    """Watchdog successfully dispatches restart with authenticated cookies."""
+    wd = TunnelWatchdog()
+    wd.last_restart_epoch = 0.0  # no recent restart
+
+    mock_resp = MagicMock()
+    mock_resp.json.return_value = {"message": "Restart sukses"}
+
+    with (
+        patch.object(wd, "diagnose", return_value={"code": "PORT_CLOSED"}),
+        patch.object(
+            wd,
+            "inspect_member_portal",
+            return_value={
+                "success": True,
+                "needs_restart": True,
+                "restart_url": "http://example.com/restart",
+                "cookies": {"PHPSESSID": "session_cookie"},
+            },
+        ),
+        patch("httpx.Client.get", return_value=mock_resp),
+    ):
+        res = wd.auto_heal_if_needed()
+        assert res["action"] == "RESTARTED"
+        assert "Restart sukses" in res["message"]
+

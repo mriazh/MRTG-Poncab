@@ -297,7 +297,18 @@ class TrafficCollector:
                 try:
                     from .tunnel_watchdog import tunnel_watchdog
 
-                    tunnel_watchdog.auto_heal_if_needed()
+                    heal_result = tunnel_watchdog.auto_heal_if_needed()
+                    if heal_result.get("action") == "RESTARTED":
+                        try:
+                            from .notifier import format_autoheal_notice, send_whatsapp_message
+
+                            autoheal_msg = format_autoheal_notice(
+                                service_id=str(self.config.tunnel_web_service_id or "N/A"),
+                                action_message=heal_result.get("message", "VPN restart executed."),
+                            )
+                            send_whatsapp_message(autoheal_msg)
+                        except Exception as wa_err:
+                            logger.debug("Failed to dispatch auto-heal WA notice: %s", wa_err)
                 except Exception as heal_err:
                     logger.debug("Tunnel auto-heal check error: %s", heal_err)
 

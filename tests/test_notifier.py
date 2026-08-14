@@ -5,6 +5,7 @@ from __future__ import annotations
 from unittest.mock import MagicMock, patch
 
 from mrtg_poncab.notifier import (
+    format_autoheal_notice,
     format_down_alert,
     format_resolved_alert,
     format_shutdown_notice,
@@ -110,4 +111,16 @@ def test_format_startup_and_shutdown_notices() -> None:
     )
     assert "[NOC SYSTEM STOPPED]" in stop_msg
     assert "Maintenance restart" in stop_msg
+
+
+def test_format_autoheal_notice() -> None:
+    """format_autoheal_notice generates structured auto-heal action notice."""
+    msg = format_autoheal_notice(
+        service_id="46486",
+        action_message="Restart sukses",
+        timestamp="2026-09-20 20:02:00",
+    )
+    assert "[NOC AUTO-HEAL]" in msg
+    assert "#46486" in msg
+    assert "Restart sukses" in msg
 

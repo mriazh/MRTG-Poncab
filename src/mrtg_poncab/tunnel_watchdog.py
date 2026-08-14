@@ -172,7 +172,7 @@ class TunnelWatchdog:
                     "needs_restart": has_koneksi_error,
                     "restart_url": diagnosa_restart_url,
                     "message": f"Service #{srv_id} status on tunnel.web.id: {service_status}",
-                    "client": client,
+                    "cookies": dict(client.cookies),
                     "raw_body": body,
                 }
 
@@ -227,27 +227,30 @@ class TunnelWatchdog:
 
             # Execute restart
             restart_url = portal.get("restart_url")
-            client = portal.get("client")
-            if restart_url and client:
+            cookies = portal.get("cookies", {})
+            if restart_url:
                 try:
-                    resp = client.get(restart_url)
-                    self.last_restart_epoch = now
-                    msg = f"Triggered Restart VPN for service #{settings.tunnel_web_service_id}."
-                    try:
-                        resp_json = resp.json()
-                        if "message" in resp_json:
-                            msg = f"Restart result: {resp_json['message']}"
-                    except Exception:
-                        pass
-                    logger.info(
-                        "Tunnel #%s restart executed: %s",
-                        settings.tunnel_web_service_id,
-                        msg,
-                    )
-                    return {
-                        "action": "RESTARTED",
-                        "message": msg,
-                    }
+                    with httpx.Client(cookies=cookies, timeout=15.0) as heal_client:
+                        resp = heal_client.get(restart_url)
+                        self.last_restart_epoch = now
+                        msg = (
+                            f"Triggered Restart VPN for service #{settings.tunnel_web_service_id}."
+                        )
+                        try:
+                            resp_json = resp.json()
+                            if "message" in resp_json:
+                                msg = f"Restart result: {resp_json['message']}"
+                        except Exception:
+                            pass
+                        logger.info(
+                            "Tunnel #%s restart executed: %s",
+                            settings.tunnel_web_service_id,
+                            msg,
+                        )
+                        return {
+                            "action": "RESTARTED",
+                            "message": msg,
+                        }
                 except Exception as e:
                     return {"action": "FAILED", "message": f"Error calling restart URL: {e}"}
 

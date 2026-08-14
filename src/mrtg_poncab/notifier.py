@@ -150,6 +150,23 @@ def format_shutdown_notice(
     )
 
 
+def format_autoheal_notice(
+    service_id: str,
+    action_message: str,
+    timestamp: str | None = None,
+) -> str:
+    """Compose informational auto-heal notification when tunnel restart is triggered."""
+    ts = timestamp or _now_wib_str()
+    return (
+        "🔄 *[NOC AUTO-HEAL] TUNNEL RESTART TRIGGERED!*\n\n"
+        f"📍 *Service ID:* #{service_id}\n"
+        f"⏱ *Time:* {ts} WIB\n"
+        "⚠️ *Issue:* 'Koneksi Error' detected on tunnel.web.id portal.\n"
+        f"ℹ️ *Action:* {action_message}\n"
+        "Waiting for MikroTik to reconnect SSTP tunnel..."
+    )
+
+
 def send_whatsapp_message(
     message: str,
     target_jid: str | None = None,
