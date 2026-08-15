@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Router Console - MRTG-Poncab{% endblock %}
+{% block title %}Router Console - {{ app_title | default("MRTG Traffic Monitor") }}{% endblock %}
 
 {% block extra_styles %}
 .console-container {
@@ -268,7 +268,7 @@
 
         <!-- Terminal Screen Output Area -->
         <div id="terminal-screen" class="terminal-screen">
-            <div class="terminal-banner">MikroTik RouterOS 6.49.8 (long-term) - GMF AeroAsia Pondok Cabe
+            <div class="terminal-banner">MikroTik RouterOS 6.49.8 - {{ site_name | default("Enterprise Gateway") }}
 Router Architecture: mipsbe (hEX PoE / RB960PGS)
 Console Bridge active via RouterOS API. Press TAB for autocomplete or type /help.</div>
         </div>

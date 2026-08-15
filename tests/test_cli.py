@@ -1,4 +1,4 @@
-"""Unit tests for MRTG-Poncab command-line interface (CLI)."""
+"""Unit tests for command-line interface (CLI)."""
 
 from __future__ import annotations
 

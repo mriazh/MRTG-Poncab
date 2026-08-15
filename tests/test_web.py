@@ -80,7 +80,7 @@ def test_login_success_and_session(client_with_db: TestClient) -> None:
     # Access protected dashboard using authenticated cookie
     dash_resp = client_with_db.get("/", cookies=resp.cookies)
     assert dash_resp.status_code == 200
-    assert "MRTG-Poncab" in dash_resp.text
+    assert "MRTG Traffic Monitor" in dash_resp.text
     assert "Traffic WAN" in dash_resp.text
     assert "theme-toggle" in dash_resp.text
     assert "Recent Traffic Samples" in dash_resp.text

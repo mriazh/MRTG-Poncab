@@ -64,19 +64,23 @@ SCENARIO_MIKROTIK_OFFLINE = "MIKROTIK_OFFLINE"
 
 
 def format_down_alert(
-    router_name: str = "MikroTik RB960PGS (WAN 150M)",
-    location: str = "GMF AeroAsia Pondok Cabe",
+    router_name: str | None = None,
+    location: str | None = None,
     reason: str = "Tunnel link dropped / Router API polling unresponsive.",
     timestamp: str | None = None,
     scenario: str = SCENARIO_MIKROTIK_OFFLINE,
+    node_name: str | None = None,
 ) -> str:
     """Compose structured incident alert message tailored to the diagnosed failure scenario."""
     ts = timestamp or _now_wib_str()
+    r_name = router_name or f"WAN ({settings.uplink_name})"
+    loc = location or f"{settings.site_name} ({settings.location_name})"
+    node = node_name or f"{settings.site_name} Monitor Host"
 
     if scenario == SCENARIO_DEBIAN_NET_DOWN:
         return (
             "🚨 *[ALERT] DEBIAN MONITOR NETWORK DOWN!*\n\n"
-            f"💻 *Node:* Debian Host (Poncab Monitor)\n"
+            f"💻 *Node:* {node}\n"
             "🏢 *Location:* Office LAN / Headquarters\n"
             f"⏱ *Time:* {ts} WIB\n"
             "🔌 *Status:* OUTBOUND NETWORK UNREACHABLE\n\n"
@@ -89,7 +93,7 @@ def format_down_alert(
     if scenario == SCENARIO_TUNNEL_PROVIDER_DOWN:
         return (
             "🚨 *[ALERT] TUNNEL PROVIDER SERVICE DOWN!*\n\n"
-            f"📍 *Target:* {router_name}\n"
+            f"📍 *Target:* {r_name}\n"
             "🏢 *Provider:* tunnel.web.id Infrastructure\n"
             f"⏱ *Time:* {ts} WIB\n"
             "🔌 *Status:* TUNNEL GATEWAY UNREACHABLE\n\n"
@@ -102,7 +106,7 @@ def format_down_alert(
     if scenario == SCENARIO_TUNNEL_SESSION_ERROR:
         return (
             "⚠️ *[ALERT] TUNNEL SESSION SUSPENDED!*\n\n"
-            f"📍 *Target:* {router_name}\n"
+            f"📍 *Target:* {r_name}\n"
             "🏢 *Provider:* tunnel.web.id Portal\n"
             f"⏱ *Time:* {ts} WIB\n"
             "🔌 *Status:* SESSION ERROR (Koneksi Error)\n\n"
@@ -114,14 +118,16 @@ def format_down_alert(
 
     # Default: SCENARIO_MIKROTIK_OFFLINE
     return (
-        "🚨 *[ALERT] MIKROTIK PONCAB OFFLINE!*\n\n"
-        f"📍 *Device:* {router_name}\n"
-        f"🏢 *Location:* {location}\n"
+        "🚨 *[ALERT] MIKROTIK GATEWAY OFFLINE!*\n\n"
+        f"📍 *Device:* {r_name}\n"
+        f"🏢 *Location:* {loc}\n"
         f"⏱ *Time:* {ts} WIB\n"
         "🔌 *Status:* DOWN (Unreachable)\n\n"
         f"⚠️ *Details:* {reason}\n"
-        "🔍 *Probable Cause:* Facility power outage at Poncab OR Telkom IndiBiz 150M uplink drop.\n"
-        "🔧 *Action:* Inquire on-site Poncab facility power status or contact Telkom 147.\n\n"
+        f"🔍 *Probable Cause:* Facility power outage at {settings.location_name} "
+        "OR ISP uplink drop.\n"
+        f"🔧 *Action:* Inquire on-site {settings.location_name} facility power status "
+        "or contact ISP support.\n\n"
         "📊 *Dashboard:* https://mrtg.mriazh.my.id"
     )
 
@@ -130,20 +136,24 @@ def format_resolved_alert(
     uptime: str,
     rx_bps: float = 0.0,
     tx_bps: float = 0.0,
-    router_name: str = "MikroTik RB960PGS (WAN 150M)",
-    location: str = "GMF AeroAsia Pondok Cabe",
+    router_name: str | None = None,
+    location: str | None = None,
     timestamp: str | None = None,
     scenario: str = SCENARIO_MIKROTIK_OFFLINE,
+    node_name: str | None = None,
 ) -> str:
     """Compose structured resolution message tailored to the initial failure scenario."""
     ts = timestamp or _now_wib_str()
+    r_name = router_name or f"WAN ({settings.uplink_name})"
+    loc = location or f"{settings.site_name} ({settings.location_name})"
+    node = node_name or f"{settings.site_name} Monitor Host"
     in_fmt = format_engineering_bits(rx_bps)
     out_fmt = format_engineering_bits(tx_bps)
 
     if scenario == SCENARIO_TUNNEL_PROVIDER_DOWN:
         return (
             "✅ *[RESOLVED] TUNNEL PROVIDER SERVICE RESTORED!*\n\n"
-            f"📍 *Target:* {router_name}\n"
+            f"📍 *Target:* {r_name}\n"
             "🏢 *Provider:* tunnel.web.id Infrastructure\n"
             f"⏱ *Time:* {ts} WIB\n"
             "🔌 *Status:* UP (Connected)\n"
@@ -159,7 +169,7 @@ def format_resolved_alert(
     if scenario == SCENARIO_TUNNEL_SESSION_ERROR:
         return (
             "✅ *[RESOLVED] TUNNEL SESSION RECOVERED!*\n\n"
-            f"📍 *Target:* {router_name}\n"
+            f"📍 *Target:* {r_name}\n"
             "🏢 *Provider:* tunnel.web.id Portal\n"
             f"⏱ *Time:* {ts} WIB\n"
             "🔌 *Status:* UP (Connected)\n"
@@ -175,7 +185,7 @@ def format_resolved_alert(
     if scenario == SCENARIO_DEBIAN_NET_DOWN:
         return (
             "✅ *[RESOLVED] DEBIAN MONITOR NETWORK RESTORED!*\n\n"
-            f"💻 *Node:* Debian Host (Poncab Monitor)\n"
+            f"💻 *Node:* {node}\n"
             f"⏱ *Time:* {ts} WIB\n"
             "🔌 *Status:* UP (Connected)\n"
             f"⏳ *Uptime:* {uptime}\n"
@@ -199,13 +209,14 @@ def format_resolved_alert(
         diagnosis = (
             "🌐 *TRANSIENT ISP / TUNNEL DROPOUT*\n"
             "Router remained powered on (system uptime sustained). "
-            "IndiBiz ISP uplink or tunnel session dropped momentarily and is now re-established."
+            f"ISP uplink ({settings.uplink_name}) or tunnel session dropped momentarily "
+            "and is now re-established."
         )
 
     return (
-        "✅ *[RESOLVED] MIKROTIK PONCAB ONLINE!*\n\n"
-        f"📍 *Device:* {router_name}\n"
-        f"🏢 *Location:* {location}\n"
+        "✅ *[RESOLVED] MIKROTIK GATEWAY ONLINE!*\n\n"
+        f"📍 *Device:* {r_name}\n"
+        f"🏢 *Location:* {loc}\n"
         f"⏱ *Time:* {ts} WIB\n"
         "🔌 *Status:* UP (Connected)\n"
         f"⏳ *Uptime:* {uptime}\n"
@@ -216,16 +227,18 @@ def format_resolved_alert(
 
 
 def format_startup_notice(
-    node_name: str = "Debian Server (Office Host)",
-    target: str = "id-04.tunnel.web.id:5336 (WAN 150M)",
+    node_name: str | None = None,
+    target: str | None = None,
     timestamp: str | None = None,
 ) -> str:
     """Compose informational daemon startup / system online notice."""
     ts = timestamp or _now_wib_str()
+    node = node_name or f"{settings.site_name} Monitor Host"
+    tgt = target or f"Router Gateway ({settings.uplink_name})"
     return (
         "🟢 *[SYSTEM ONLINE] MRTG Collector Daemon Started*\n\n"
-        f"💻 *Node:* {node_name}\n"
-        f"🎯 *Target:* {target}\n"
+        f"💻 *Node:* {node}\n"
+        f"🎯 *Target:* {tgt}\n"
         f"⏱ *Time:* {ts} WIB\n"
         "Status: Collector daemon active and monitoring traffic samples.\n\n"
         "📊 *Dashboard:* https://mrtg.mriazh.my.id"
@@ -233,15 +246,16 @@ def format_startup_notice(
 
 
 def format_shutdown_notice(
-    node_name: str = "Debian Server (Office Host)",
+    node_name: str | None = None,
     reason: str = "Daemon stopping for update or maintenance restart.",
     timestamp: str | None = None,
 ) -> str:
     """Compose informational daemon graceful shutdown notice."""
     ts = timestamp or _now_wib_str()
+    node = node_name or f"{settings.site_name} Monitor Host"
     return (
         "⏸️ *[SYSTEM STOPPED] MRTG Collector Daemon Stopping*\n\n"
-        f"💻 *Node:* {node_name}\n"
+        f"💻 *Node:* {node}\n"
         f"⏱ *Time:* {ts} WIB\n"
         f"ℹ️ *Note:* {reason}\n"
         "If intentional (deploy/update), recovery notice will follow automatically."
@@ -287,16 +301,17 @@ def format_duration(seconds: float | int) -> str:
 
 
 def format_power_restored_notice(
-    node_name: str = "Debian Host (Poncab Monitor)",
+    node_name: str | None = None,
     last_seen: str = "",
     restored: str = "",
     downtime_seconds: float = 0.0,
 ) -> str:
-    """Compose alert when Debian host boots up after prolonged downtime / power outage."""
+    """Compose alert when host boots up after prolonged downtime / power outage."""
+    node = node_name or f"{settings.site_name} Monitor Host"
     dur_str = format_duration(downtime_seconds)
     return (
         "🟢 *[SYSTEM RESTORED] DEBIAN HOST POWER RECOVERED!*\n\n"
-        f"💻 *Node:* {node_name}\n"
+        f"💻 *Node:* {node}\n"
         f"⏱ *Last Sample:* {last_seen} WIB\n"
         f"⏱ *Restored:* {restored} WIB\n"
         f"⏳ *Downtime Duration:* {dur_str}\n\n"
@@ -308,16 +323,17 @@ def format_power_restored_notice(
 
 
 def format_network_restored_notice(
-    node_name: str = "Debian Host (Poncab Monitor)",
+    node_name: str | None = None,
     disconnected: str = "",
     reconnected: str = "",
     outage_seconds: float = 0.0,
 ) -> str:
     """Compose alert when local office internet connectivity recovers."""
+    node = node_name or f"{settings.site_name} Monitor Host"
     dur_str = format_duration(outage_seconds)
     return (
         "🌐 *[NETWORK RESTORED] OFFICE INTERNET RECOVERED!*\n\n"
-        f"💻 *Node:* {node_name}\n"
+        f"💻 *Node:* {node}\n"
         f"⏱ *Disconnect Time:* {disconnected} WIB\n"
         f"⏱ *Reconnect Time:* {reconnected} WIB\n"
         f"⏳ *Outage Duration:* {dur_str}\n\n"

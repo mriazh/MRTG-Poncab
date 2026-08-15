@@ -1,4 +1,4 @@
-"""Command-line interface (CLI) for MRTG-Poncab operations."""
+"""Command-line interface (CLI) for MRTG operations."""
 
 from __future__ import annotations
 
@@ -125,7 +125,7 @@ def build_parser() -> argparse.ArgumentParser:
     """Build and return command-line argument parser."""
     parser = argparse.ArgumentParser(
         prog="mrtg-poncab",
-        description="MRTG-Poncab - MikroTik WAN Traffic Monitoring & Reporting",
+        description="MRTG Traffic Monitor - MikroTik WAN Traffic Monitoring & Reporting",
     )
     subparsers = parser.add_subparsers(dest="command", required=True)
 

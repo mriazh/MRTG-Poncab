@@ -212,7 +212,7 @@ class TunnelWatchdog:
                 "diagnosis": diag,
                 "portal_status": "DISCONNECTED",
                 "message": (
-                    "MikroTik is offline at Poncab (power outage or ISP down). "
+                    f"MikroTik is offline at {settings.location_name} (power outage or ISP down). "
                     "Tunnel server is healthy."
                 ),
             }

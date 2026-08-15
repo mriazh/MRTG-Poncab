@@ -91,7 +91,7 @@ def test_render_traffic_graph_empty_and_populated() -> None:
 
     png_populated = render_traffic_graph(
         mock_samples,
-        title="Traffic WAN INDIBIZ 150Mbps - GMF Pondok Cabe",
+        title="Traffic WAN Main Uplink (150 Mbps) - Enterprise Gateway",
         start_time="2026-09-14 00:00:00",
         end_time="2026-09-14 23:55:00",
     )

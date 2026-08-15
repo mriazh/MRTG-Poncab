@@ -1,4 +1,4 @@
-"""Data export modules for MRTG-Poncab (CSV and Excel formats)."""
+"""Data export modules for MRTG (CSV and Excel formats)."""
 
 from __future__ import annotations
 
@@ -12,6 +12,7 @@ from openpyxl import Workbook
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
 
+from .config import settings
 from .db import TrafficSample
 from .graph_renderer import calculate_statistics
 
@@ -92,11 +93,13 @@ def export_csv(
 def export_excel(
     samples: Sequence[dict[str, Any] | TrafficSample],
     interface_name: str = "WAN",
-    title: str = "Traffic Report - WAN INDIBIZ 150Mbps",
+    title: str | None = None,
     start_time: str | datetime | None = None,
     end_time: str | datetime | None = None,
 ) -> bytes:
     """Generate a styled Excel workbook (.xlsx) containing traffic records and summaries."""
+    if title is None:
+        title = f"Traffic Report - WAN ({settings.uplink_name}) - {settings.site_name}"
     wb = Workbook()
     ws = wb.active
     ws.title = "Traffic Report"

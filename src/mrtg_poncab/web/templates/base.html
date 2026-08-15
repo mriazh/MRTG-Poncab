@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}MRTG-Poncab - GMF AeroAsia Pondok Cabe{% endblock %}</title>
+    <title>{% block title %}{{ app_title | default("MRTG Traffic Monitor") }} - {{ site_name | default("Enterprise Gateway") }}{% endblock %}</title>
     <script>
         (function() {
             const savedTheme = localStorage.getItem('mrtg_theme') || 'light';
@@ -219,8 +219,8 @@
 <body>
     <header>
         <div class="brand">
-            <h1>MRTG-Poncab</h1>
-            <span class="brand-subtitle">GMF AeroAsia Pondok Cabe</span>
+            <h1>{{ app_title | default("MRTG Traffic Monitor") }}</h1>
+            <span class="brand-subtitle">{{ site_name | default("Enterprise Gateway") }}</span>
         </div>
         <div class="nav-actions">
             {% if current_user %}
@@ -243,7 +243,7 @@
     </div>
 
     <footer>
-        &copy; 2026 GMF AeroAsia &middot; Network Monitoring System &middot; RouterOS API &middot; RRDtool Visual Fidelity
+        &copy; 2026 {{ site_name | default("Enterprise Gateway") }} &middot; Network Monitoring System &middot; RouterOS API &middot; RRDtool Visual Fidelity
     </footer>
 
     <script>

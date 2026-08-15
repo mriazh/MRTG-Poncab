@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# MRTG-Poncab - Automated Fast-Reload Deployment Script
-# Target: Debian 13 (PC Kantor GMF AeroAsia Pondok Cabe)
+# MRTG Traffic Monitor - Automated Fast-Reload Deployment Script
+# Target: Debian 13 (Production Host)
 # ==============================================================================
 set -e
 
@@ -9,7 +9,7 @@ APP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$APP_DIR"
 
 echo "=========================================================="
-echo "🚀 [MRTG-Poncab] Deploying latest updates on Debian server"
+echo "🚀 [MRTG] Deploying latest updates on Debian server"
 echo "=========================================================="
 
 echo "📥 1/4 Pulling latest commits from GitHub..."

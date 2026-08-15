@@ -341,7 +341,7 @@ class TrafficCollector:
                         )
                         rec_dt = datetime.fromtimestamp(now_epoch, tz=UTC) + WIB_OFFSET
                         net_msg = format_network_restored_notice(
-                            node_name="Debian Host (Poncab Monitor)",
+                            node_name=f"{self.config.site_name} Monitor Host",
                             disconnected=dis_dt.strftime("%Y-%m-%d %H:%M:%S"),
                             reconnected=rec_dt.strftime("%Y-%m-%d %H:%M:%S"),
                             outage_seconds=net_outage,
@@ -360,7 +360,7 @@ class TrafficCollector:
                         uptime=uptime or "unknown",
                         rx_bps=rate.rx_bps,
                         tx_bps=rate.tx_bps,
-                        router_name=f"WAN ({self.config.routeros_interface})",
+                        router_name=f"WAN ({self.config.uplink_name})",
                         scenario=self._active_down_scenario,
                     )
                     send_whatsapp_message(resolved_msg)
@@ -392,7 +392,7 @@ class TrafficCollector:
                     from .notifier import format_down_alert, send_whatsapp_message
 
                     down_msg = format_down_alert(
-                        router_name=f"WAN ({self.config.routeros_interface})",
+                        router_name=f"WAN ({self.config.uplink_name})",
                         reason=scenario_reason,
                         scenario=scenario,
                     )
@@ -480,19 +480,19 @@ class TrafficCollector:
                         )
                         restored_dt = datetime.fromtimestamp(now_epoch, tz=UTC) + WIB_OFFSET
                         start_msg = format_power_restored_notice(
-                            node_name="Debian Host (Poncab Monitor)",
+                            node_name=f"{self.config.site_name} Monitor Host",
                             last_seen=last_seen_dt.strftime("%Y-%m-%d %H:%M:%S"),
                             restored=restored_dt.strftime("%Y-%m-%d %H:%M:%S"),
                             downtime_seconds=gap_seconds,
                         )
                     else:
                         start_msg = format_startup_notice(
-                            node_name="Debian Host (Poncab Monitor)",
+                            node_name=f"{self.config.site_name} Monitor Host",
                             target=f"{self.config.routeros_host}:{self.config.routeros_port}",
                         )
                 else:
                     start_msg = format_startup_notice(
-                        node_name="Debian Host (Poncab Monitor)",
+                        node_name=f"{self.config.site_name} Monitor Host",
                         target=f"{self.config.routeros_host}:{self.config.routeros_port}",
                     )
 
@@ -522,7 +522,7 @@ class TrafficCollector:
                 from .notifier import format_shutdown_notice, send_whatsapp_message
 
                 stop_msg = format_shutdown_notice(
-                    node_name="Debian Host (Poncab Monitor)",
+                    node_name=f"{self.config.site_name} Monitor Host",
                     reason="Daemon stopping for maintenance or service reload.",
                 )
                 send_whatsapp_message(stop_msg)

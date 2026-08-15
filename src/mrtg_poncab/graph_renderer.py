@@ -17,6 +17,7 @@ import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
 from matplotlib.ticker import FuncFormatter, Locator, NullLocator
 
+from .config import settings
 from .db import TrafficSample
 
 WIB_OFFSET = timedelta(hours=7)
@@ -115,7 +116,7 @@ def calculate_statistics(
 
 def render_traffic_graph(
     samples: Sequence[dict[str, Any] | TrafficSample],
-    title: str = "Traffic WAN (INDIBIZ 150M) - GMF Pondok Cabe",
+    title: str | None = None,
     start_time: str | datetime | None = None,
     end_time: str | datetime | None = None,
     start_epoch: int | float | None = None,
@@ -126,6 +127,8 @@ def render_traffic_graph(
     watermark: str = "RRDTOOL / TOBI OETIKER",
 ) -> bytes:
     """Render an authentic RRDtool-aesthetic traffic graph into PNG bytes."""
+    if title is None:
+        title = f"Traffic WAN ({settings.uplink_name}) - {settings.site_name}"
     figsize = (width_px / dpi, height_px / dpi)
     fig = plt.figure(figsize=figsize, dpi=dpi, facecolor=FIGURE_FACECOLOR)
 
@@ -466,3 +469,6 @@ def render_traffic_graph(
     plt.close(fig)
     buf.seek(0)
     return buf.getvalue()
+
+
+generate_traffic_graph = render_traffic_graph

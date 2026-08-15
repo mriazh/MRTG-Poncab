@@ -24,7 +24,22 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    app_name: str = "MRTG-Poncab"
+    app_title: str = Field(
+        default="MRTG Traffic Monitor",
+        validation_alias=AliasChoices("app_title", "app_name"),
+    )
+    site_name: str = Field(
+        default="Enterprise Gateway",
+        validation_alias=AliasChoices("site_name", "site"),
+    )
+    location_name: str = Field(
+        default="Branch Office",
+        validation_alias=AliasChoices("location_name", "location"),
+    )
+    uplink_name: str = Field(
+        default="Main Uplink (150 Mbps)",
+        validation_alias=AliasChoices("uplink_name", "uplink"),
+    )
     database_path: Path = Field(
         default=Path("data/traffic.db"),
         validation_alias=AliasChoices("database_path", "db_path"),
@@ -90,6 +105,12 @@ class Settings(BaseSettings):
         """Backward-compatible short name for the database path."""
 
         return self.database_path
+
+    @property
+    def app_name(self) -> str:
+        """Backward-compatible property returning app_title."""
+
+        return self.app_title
 
 
 @lru_cache

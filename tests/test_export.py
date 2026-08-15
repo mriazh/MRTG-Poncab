@@ -73,7 +73,7 @@ def test_export_excel_validity() -> None:
     xlsx_bytes = export_excel(
         samples,
         interface_name="WAN",
-        title="Test Report - GMF Pondok Cabe",
+        title="Test Report - Enterprise Gateway",
         start_time="2026-09-14 00:00:00",
         end_time="2026-09-14 23:55:00",
     )
@@ -82,7 +82,7 @@ def test_export_excel_validity() -> None:
     assert "Traffic Report" in wb.sheetnames
 
     ws = wb["Traffic Report"]
-    assert ws["A1"].value == "Test Report - GMF Pondok Cabe"
+    assert ws["A1"].value == "Test Report - Enterprise Gateway"
     assert ws["B3"].value == "WAN"
 
     # Row 10 headers

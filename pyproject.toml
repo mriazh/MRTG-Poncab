@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "mrtg-poncab"
 version = "0.1.0"
-description = "MikroTik WAN traffic monitoring, history, and reporting for Pondok Cabe"
+description = "MikroTik WAN traffic monitoring, history, and reporting for enterprise branch gateways"
 readme = "requirements.md"
 requires-python = ">=3.11"
 dependencies = [

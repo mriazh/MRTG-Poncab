@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Login - MRTG-Poncab{% endblock %}
+{% block title %}Login - {{ app_title | default("MRTG Traffic Monitor") }}{% endblock %}
 
 {% block extra_styles %}
 .login-wrapper {

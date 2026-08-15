@@ -77,9 +77,9 @@ def test_format_down_alert_scenarios() -> None:
         scenario=SCENARIO_MIKROTIK_OFFLINE,
         timestamp="2026-09-21 10:00:00",
     )
-    assert "[ALERT] MIKROTIK PONCAB OFFLINE" in msg4
+    assert "[ALERT] MIKROTIK GATEWAY OFFLINE" in msg4
     assert "DOWN (Unreachable)" in msg4
-    assert "Facility power outage at Poncab" in msg4
+    assert "Facility power outage" in msg4
 
 
 def test_format_resolved_alert_adaptive_scenarios() -> None:

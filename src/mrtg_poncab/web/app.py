@@ -1,4 +1,4 @@
-"""FastAPI web application and reporting API for MRTG-Poncab."""
+"""FastAPI web application and reporting API for MRTG Traffic Monitor."""
 
 from __future__ import annotations
 
@@ -144,7 +144,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
 
 app = FastAPI(
-    title="MRTG-Poncab",
+    title=settings.app_title,
     description="MikroTik WAN traffic monitoring, historical analysis, and reporting",
     lifespan=lifespan,
 )
@@ -171,6 +171,10 @@ def login_page(
             "next_url": next,
             "error": None,
             "current_user": None,
+            "site_name": settings.site_name,
+            "location_name": settings.location_name,
+            "uplink_name": settings.uplink_name,
+            "app_title": settings.app_title,
         },
     )
 
@@ -194,6 +198,10 @@ def process_login(
                 "next_url": next,
                 "error": "Invalid username or password",
                 "current_user": None,
+                "site_name": settings.site_name,
+                "location_name": settings.location_name,
+                "uplink_name": settings.uplink_name,
+                "app_title": settings.app_title,
             },
             status_code=status.HTTP_401_UNAUTHORIZED,
         )
@@ -305,6 +313,10 @@ def dashboard_view(
         request=request,
         name="dashboard.html",
         context={
+            "site_name": settings.site_name,
+            "location_name": settings.location_name,
+            "uplink_name": settings.uplink_name,
+            "app_title": settings.app_title,
             "current_user": current_user,
             "active_preset": active_preset,
             "fullday_val": (fullday or display_st[:10]) if active_preset == "fullday" else "",
@@ -317,7 +329,8 @@ def dashboard_view(
             "current_out_formatted": cur_out,
             "recent_samples": formatted_recent,
             "graph_title": (
-                f"Traffic {settings.routeros_interface} (INDIBIZ 150M) - GMF Pondok Cabe"
+                f"Traffic {settings.routeros_interface} ({settings.uplink_name}) - "
+                f"{settings.site_name}"
             ),
             "graph_img_url": graph_img_url,
             "export_png_url": export_png_url,
@@ -401,7 +414,10 @@ def api_graph_png(
     samples = db.get_traffic_samples(start=start_epoch, end=end_epoch)
     png_bytes = render_traffic_graph(
         samples=samples,
-        title=f"Traffic {settings.routeros_interface} (INDIBIZ 150M) - GMF Pondok Cabe",
+        title=(
+            f"Traffic {settings.routeros_interface} ({settings.uplink_name}) - "
+            f"{settings.site_name}"
+        ),
         start_time=display_st,
         end_time=display_et,
         start_epoch=start_epoch,
@@ -473,7 +489,10 @@ def api_export_excel(
     excel_bytes = export_excel(
         samples=samples,
         interface_name=settings.routeros_interface,
-        title=f"Traffic Report - WAN {settings.routeros_interface} - GMF Pondok Cabe",
+        title=(
+            f"Traffic Report - {settings.routeros_interface} ({settings.uplink_name}) - "
+            f"{settings.site_name}"
+        ),
         start_time=f"{display_st} WIB",
         end_time=f"{display_et} WIB",
     )
@@ -514,6 +533,10 @@ def console_view(
         request=request,
         name="console.html",
         context={
+            "site_name": settings.site_name,
+            "location_name": settings.location_name,
+            "uplink_name": settings.uplink_name,
+            "app_title": settings.app_title,
             "current_user": current_user,
             "router_target": f"{settings.routeros_host}:{settings.routeros_port}",
         },

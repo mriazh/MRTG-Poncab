@@ -1,1 +1,1 @@
-"""Web application package for MRTG-Poncab."""
+"""Web application package for MRTG."""

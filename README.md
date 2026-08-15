@@ -1,6 +1,6 @@
 # MRTG-Poncab
 
-Enterprise-grade network traffic monitoring, historical analysis, and reporting system for the MikroTik RB960PGS router at **GMF AeroAsia Pondok Cabe**.
+Enterprise-grade network traffic monitoring, historical analysis, and reporting system for MikroTik RouterOS branch gateways.
 
 The system polls the MikroTik RouterOS API over a dedicated TCP tunnel, records granular time-series traffic samples in an embedded SQLite database (WAL mode), and serves an authenticated web dashboard featuring custom date-range selection, RRDtool-identical graphs, and multi-format reporting exports (PNG, Excel, CSV).
 
@@ -26,14 +26,14 @@ The system polls the MikroTik RouterOS API over a dedicated TCP tunnel, records 
 
 ```
 ┌──────────────────────────────────────┐
-│        MikroTik RB960PGS             │
-│    (GMF AeroAsia Pondok Cabe)        │
-│    Interface: WAN (INDIBIZ 150M)     │
+│       Enterprise Branch Router       │
+│         (MikroTik RouterOS)          │
+│    Interface: WAN (Main Uplink 150M) │
 └──────────────────┬───────────────────┘
                    │ RouterOS API (TCP 8728)
                    ▼
 ┌──────────────────────────────────────┐
-│       MRTG-Poncab Host               │
+│       Traffic Monitor Host           │
 │   ┌──────────────────────────────┐   │
 │   │ Collector Daemon (300s)      │   │
 │   └──────────────┬───────────────┘   │
@@ -65,8 +65,11 @@ The system polls the MikroTik RouterOS API over a dedicated TCP tunnel, records 
 Copy `.env.example` to `.env` and adjust the variables:
 
 ```ini
-# Application
-APP_NAME="MRTG-Poncab"
+# Application branding and site identification
+APP_NAME="MRTG Traffic Monitor"
+SITE_NAME="Enterprise Gateway"
+LOCATION_NAME="Branch Office"
+UPLINK_NAME="Main Uplink (150 Mbps)"
 DATABASE_PATH="data/traffic.db"
 
 # MikroTik RouterOS API Settings
@@ -185,13 +188,13 @@ sudo systemctl enable --now mrtg-poncab-web.service
 ### 4. Firewall & Network Access
 Allow web access through the Debian firewall:
 ```bash
-sudo ufw allow 8000/tcp comment "MRTG-Poncab Web Dashboard & Console"
+sudo ufw allow 8000/tcp comment "MRTG Web Dashboard & Console"
 ```
 
-- **Office LAN Access**: Connect your workstation to the GMF corporate network (cable or Wi-Fi) and open:
-  `http://172.31.136.116:8000`
-- **Remote / WFH Access**: Connect your laptop to the official **Check Point VPN** client. Once connected to corporate tunnel, navigate to:
-  `http://172.31.136.116:8000`
+- **Office LAN Access**: Connect your workstation to the branch network (cable or Wi-Fi) and open:
+  `http://<server-ip>:8000`
+- **Remote / WFH Access**: Connect your workstation to your corporate VPN client. Once connected to the tunnel, navigate to:
+  `http://<server-ip>:8000`
 
 ### 5. Automated 1-Click Fast Updates (`deploy.sh`)
 Whenever updates are pushed from development, update the production server with zero hassle:
@@ -225,4 +228,4 @@ sudo journalctl -u mrtg-poncab-collector.service -f
 ---
 
 ## License & Attribution
-Proprietary network monitoring tool developed for GMF AeroAsia Pondok Cabe. Graphing aesthetics designed to match RRDtool visual standards.
+Network monitoring tool designed to match RRDtool visual standards for enterprise branch gateways.
