@@ -56,14 +56,63 @@ def is_recent_reboot(uptime: str | None) -> bool:
     return bool("m" in u or "s" in u)
 
 
+# Scenario Constants
+SCENARIO_DEBIAN_NET_DOWN = "DEBIAN_NET_DOWN"
+SCENARIO_TUNNEL_PROVIDER_DOWN = "TUNNEL_PROVIDER_DOWN"
+SCENARIO_TUNNEL_SESSION_ERROR = "TUNNEL_SESSION_ERROR"
+SCENARIO_MIKROTIK_OFFLINE = "MIKROTIK_OFFLINE"
+
+
 def format_down_alert(
     router_name: str = "MikroTik RB960PGS (WAN 150M)",
     location: str = "GMF AeroAsia Pondok Cabe",
     reason: str = "Tunnel link dropped / Router API polling unresponsive.",
     timestamp: str | None = None,
+    scenario: str = SCENARIO_MIKROTIK_OFFLINE,
 ) -> str:
-    """Compose structured NOC incident alert message."""
+    """Compose structured NOC incident alert message tailored to the diagnosed failure scenario."""
     ts = timestamp or _now_wib_str()
+
+    if scenario == SCENARIO_DEBIAN_NET_DOWN:
+        return (
+            "🚨 *[NOC ALERT] DEBIAN MONITOR NETWORK DOWN!*\n\n"
+            f"💻 *Node:* Debian Host (Poncab Monitor)\n"
+            "🏢 *Location:* Office LAN / Headquarters\n"
+            f"⏱ *Time:* {ts} WIB\n"
+            "🔌 *Status:* OUTBOUND NETWORK UNREACHABLE\n\n"
+            f"⚠️ *Details:* {reason}\n"
+            "🔍 *Probable Cause:* Office network / ISP connection lost or local gateway down.\n"
+            "🔧 *Action:* Check local office router / switch / internet connection.\n\n"
+            "📊 *Dashboard:* https://mrtg.mriazh.my.id"
+        )
+
+    if scenario == SCENARIO_TUNNEL_PROVIDER_DOWN:
+        return (
+            "🚨 *[NOC ALERT] TUNNEL PROVIDER SERVICE DOWN!*\n\n"
+            f"📍 *Target:* {router_name}\n"
+            "🏢 *Provider:* tunnel.web.id Infrastructure\n"
+            f"⏱ *Time:* {ts} WIB\n"
+            "🔌 *Status:* TUNNEL GATEWAY UNREACHABLE\n\n"
+            f"⚠️ *Details:* {reason}\n"
+            "🔍 *Probable Cause:* tunnel.web.id server outage or DNS resolution failure.\n"
+            "🔧 *Action:* Check status.tunnel.web.id or contact provider support.\n\n"
+            "📊 *Dashboard:* https://mrtg.mriazh.my.id"
+        )
+
+    if scenario == SCENARIO_TUNNEL_SESSION_ERROR:
+        return (
+            "⚠️ *[NOC ALERT] TUNNEL SESSION SUSPENDED!*\n\n"
+            f"📍 *Target:* {router_name}\n"
+            "🏢 *Provider:* tunnel.web.id Portal\n"
+            f"⏱ *Time:* {ts} WIB\n"
+            "🔌 *Status:* SESSION ERROR (Koneksi Error)\n\n"
+            f"⚠️ *Details:* {reason}\n"
+            "🔍 *Probable Cause:* Ghost session collision on tunnel.web.id server.\n"
+            "🤖 *Auto-Healing:* Auto-restart triggered via portal API.\n\n"
+            "📊 *Dashboard:* https://mrtg.mriazh.my.id"
+        )
+
+    # Default: SCENARIO_MIKROTIK_OFFLINE
     return (
         "🚨 *[NOC ALERT] MIKROTIK PONCAB OFFLINE!*\n\n"
         f"📍 *Device:* {router_name}\n"
@@ -71,7 +120,8 @@ def format_down_alert(
         f"⏱ *Time:* {ts} WIB\n"
         "🔌 *Status:* DOWN (Unreachable)\n\n"
         f"⚠️ *Details:* {reason}\n"
-        "Probable cause: Facility power outage or Telkom IndiBiz uplink drop.\n\n"
+        "🔍 *Probable Cause:* Facility power outage at Poncab OR Telkom IndiBiz 150M uplink drop.\n"
+        "🔧 *Action:* Inquire on-site Poncab facility power status or contact Telkom 147.\n\n"
         "📊 *Dashboard:* https://mrtg.mriazh.my.id"
     )
 

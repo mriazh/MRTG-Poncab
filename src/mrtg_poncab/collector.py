@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import socket
 import time
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -213,6 +214,77 @@ class TrafficCollector:
             self._last_tx_bytes = latest["tx_bytes"]
             self._last_epoch = latest["epoch"]
 
+    def _diagnose_failure(self, exc: Exception) -> tuple[str, str]:
+        """Perform 4-layer sequential network triangulation upon polling failure.
+
+        Returns:
+            (scenario_code: str, reason_detail: str)
+        """
+        from .notifier import (
+            SCENARIO_DEBIAN_NET_DOWN,
+            SCENARIO_MIKROTIK_OFFLINE,
+            SCENARIO_TUNNEL_PROVIDER_DOWN,
+            SCENARIO_TUNNEL_SESSION_ERROR,
+        )
+
+        # Layer 1: Test if local host has outbound internet connectivity
+        local_net_ok = False
+        for test_ip in ("1.1.1.1", "8.8.8.8"):
+            try:
+                with socket.create_connection((test_ip, 53), timeout=2.0):
+                    local_net_ok = True
+                    break
+            except (TimeoutError, ConnectionRefusedError, OSError):
+                continue
+
+        if not local_net_ok:
+            return (
+                SCENARIO_DEBIAN_NET_DOWN,
+                "Local host failed to reach public DNS (1.1.1.1 / 8.8.8.8). Outbound network down.",
+            )
+
+        # Layer 2: Test if tunnel provider host is resolvable and alive on HTTPS (443)
+        host = self.config.routeros_host
+        try:
+            resolved_ip = socket.gethostbyname(host)
+        except socket.gaierror:
+            return (
+                SCENARIO_TUNNEL_PROVIDER_DOWN,
+                f"Cannot resolve tunnel host '{host}'. Provider DNS outage.",
+            )
+
+        try:
+            with socket.create_connection((resolved_ip, 443), timeout=3.0):
+                server_alive = True
+        except (TimeoutError, ConnectionRefusedError, OSError):
+            server_alive = False
+
+        if not server_alive:
+            return (
+                SCENARIO_TUNNEL_PROVIDER_DOWN,
+                f"Tunnel server '{host}' ({resolved_ip}) is unreachable on port 443.",
+            )
+
+        # Layer 3: Inspect tunnel.web.id portal if credentials are configured
+        if self.config.tunnel_web_email and self.config.tunnel_web_password:
+            try:
+                from .tunnel_watchdog import tunnel_watchdog
+
+                portal = tunnel_watchdog.inspect_member_portal()
+                if portal.get("code") == "KONEKSI_ERROR" or portal.get("needs_restart"):
+                    return (
+                        SCENARIO_TUNNEL_SESSION_ERROR,
+                        f"'Koneksi Error' detected on tunnel #{self.config.tunnel_web_service_id}.",
+                    )
+            except Exception as e:
+                logger.debug("Portal inspection exception during failure diagnosis: %s", e)
+
+        # Layer 4: Tunnel is healthy, but router port is closed -> MikroTik offline
+        return (
+            SCENARIO_MIKROTIK_OFFLINE,
+            f"API connection timed out on {host}:{self.config.routeros_port} ({exc}).",
+        )
+
     def poll_once(self) -> TrafficSample | None:
         """Perform a single polling cycle, compute rates, and persist sample."""
         now_epoch = self.clock()
@@ -281,12 +353,14 @@ class TrafficCollector:
                 and not self._is_currently_down
             ):
                 self._is_currently_down = True
+                scenario, scenario_reason = self._diagnose_failure(exc)
                 try:
                     from .notifier import format_down_alert, send_whatsapp_message
 
                     down_msg = format_down_alert(
                         router_name=f"WAN ({self.config.routeros_interface})",
-                        reason=f"API polling connection failed: {exc}",
+                        reason=scenario_reason,
+                        scenario=scenario,
                     )
                     send_whatsapp_message(down_msg)
                 except Exception as alert_err:

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import socket
 from pathlib import Path
 from typing import Any
 
@@ -162,3 +163,68 @@ def test_traffic_collector_poll_lifecycle(tmp_path: Path) -> None:
     assert samples[0]["status"] == "UP"
     assert samples[1]["status"] == "UP"
     assert samples[2]["status"] == "DOWN"
+
+
+def test_diagnose_failure_scenarios(tmp_path: Path) -> None:
+    """_diagnose_failure correctly classifies 4 failure scenarios."""
+    from unittest.mock import MagicMock, patch
+
+    from mrtg_poncab.notifier import (
+        SCENARIO_DEBIAN_NET_DOWN,
+        SCENARIO_MIKROTIK_OFFLINE,
+        SCENARIO_TUNNEL_PROVIDER_DOWN,
+        SCENARIO_TUNNEL_SESSION_ERROR,
+    )
+
+    db = Database(tmp_path / "diag.db")
+    db.initialize()
+    collector = TrafficCollector(database=db)
+
+    # Scenario 1: Local internet down (socket to 1.1.1.1/8.8.8.8 fails)
+    with patch("socket.create_connection", side_effect=OSError("Network unreachable")):
+        scenario, reason = collector._diagnose_failure(RuntimeError("timeout"))
+        assert scenario == SCENARIO_DEBIAN_NET_DOWN
+        assert "DNS" in reason
+
+    # Scenario 2: DNS resolution for tunnel host fails
+    def mock_socket_conn(addr: tuple[str, int], timeout: float = 2.0) -> object:
+        if addr[0] in ("1.1.1.1", "8.8.8.8"):
+            return MagicMock()
+        raise OSError("Connection failed")
+
+    with (
+        patch("socket.create_connection", side_effect=mock_socket_conn),
+        patch("socket.gethostbyname", side_effect=socket.gaierror("No such host")),
+    ):
+        scenario, reason = collector._diagnose_failure(RuntimeError("timeout"))
+        assert scenario == SCENARIO_TUNNEL_PROVIDER_DOWN
+        assert "DNS outage" in reason
+
+    # Scenario 3: Portal reports Koneksi Error
+    def mock_socket_alive(addr: tuple[str, int], timeout: float = 2.0) -> object:
+        return MagicMock()
+
+    with (
+        patch("socket.create_connection", side_effect=mock_socket_alive),
+        patch("socket.gethostbyname", return_value="157.66.54.157"),
+        patch("mrtg_poncab.config.settings.tunnel_web_email", "user@test.com"),
+        patch("mrtg_poncab.config.settings.tunnel_web_password", "secret"),
+        patch(
+            "mrtg_poncab.tunnel_watchdog.tunnel_watchdog.inspect_member_portal",
+            return_value={"code": "KONEKSI_ERROR", "needs_restart": True},
+        ),
+    ):
+        scenario, reason = collector._diagnose_failure(RuntimeError("timeout"))
+        assert scenario == SCENARIO_TUNNEL_SESSION_ERROR
+        assert "Koneksi Error" in reason
+
+    # Scenario 4: Default MikroTik offline
+    with (
+        patch("socket.create_connection", side_effect=mock_socket_alive),
+        patch("socket.gethostbyname", return_value="157.66.54.157"),
+        patch("mrtg_poncab.config.settings.tunnel_web_email", None),
+    ):
+        scenario, reason = collector._diagnose_failure(RuntimeError("timed out"))
+        assert scenario == SCENARIO_MIKROTIK_OFFLINE
+        assert "timed out" in reason
+

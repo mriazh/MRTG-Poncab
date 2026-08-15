@@ -5,6 +5,10 @@ from __future__ import annotations
 from unittest.mock import MagicMock, patch
 
 from mrtg_poncab.notifier import (
+    SCENARIO_DEBIAN_NET_DOWN,
+    SCENARIO_MIKROTIK_OFFLINE,
+    SCENARIO_TUNNEL_PROVIDER_DOWN,
+    SCENARIO_TUNNEL_SESSION_ERROR,
     format_autoheal_notice,
     format_down_alert,
     format_resolved_alert,
@@ -34,18 +38,45 @@ def test_is_recent_reboot_detection() -> None:
     assert is_recent_reboot("") is False
 
 
-def test_format_down_alert() -> None:
-    """format_down_alert generates structured incident message."""
-    msg = format_down_alert(
-        router_name="MikroTik WAN",
-        location="Pondok Cabe",
-        reason="Port 5336 unreachable",
-        timestamp="2026-09-20 14:00:00",
+def test_format_down_alert_scenarios() -> None:
+    """format_down_alert generates tailored alert messages for each failure scenario."""
+    # Scenario 1: Debian Network Down
+    msg1 = format_down_alert(
+        reason="No internet connection",
+        scenario=SCENARIO_DEBIAN_NET_DOWN,
+        timestamp="2026-09-21 10:00:00",
     )
-    assert "[NOC ALERT]" in msg
-    assert "DOWN" in msg
-    assert "MikroTik WAN" in msg
-    assert "https://mrtg.mriazh.my.id" in msg
+    assert "[NOC ALERT] DEBIAN MONITOR NETWORK DOWN" in msg1
+    assert "OUTBOUND NETWORK UNREACHABLE" in msg1
+
+    # Scenario 2: Tunnel Provider Down
+    msg2 = format_down_alert(
+        reason="Server 443 unreachable",
+        scenario=SCENARIO_TUNNEL_PROVIDER_DOWN,
+        timestamp="2026-09-21 10:00:00",
+    )
+    assert "[NOC ALERT] TUNNEL PROVIDER SERVICE DOWN" in msg2
+    assert "TUNNEL GATEWAY UNREACHABLE" in msg2
+
+    # Scenario 3: Tunnel Session Suspended (Koneksi Error)
+    msg3 = format_down_alert(
+        reason="Ghost session detected",
+        scenario=SCENARIO_TUNNEL_SESSION_ERROR,
+        timestamp="2026-09-21 10:00:00",
+    )
+    assert "[NOC ALERT] TUNNEL SESSION SUSPENDED" in msg3
+    assert "SESSION ERROR (Koneksi Error)" in msg3
+    assert "Auto-Healing" in msg3
+
+    # Scenario 4: MikroTik Offline
+    msg4 = format_down_alert(
+        reason="Port 5336 closed",
+        scenario=SCENARIO_MIKROTIK_OFFLINE,
+        timestamp="2026-09-21 10:00:00",
+    )
+    assert "[NOC ALERT] MIKROTIK PONCAB OFFLINE" in msg4
+    assert "DOWN (Unreachable)" in msg4
+    assert "Facility power outage at Poncab" in msg4
 
 
 def test_format_resolved_alert_power_outage() -> None:
