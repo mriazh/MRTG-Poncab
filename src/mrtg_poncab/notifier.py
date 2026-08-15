@@ -95,7 +95,7 @@ def format_down_alert(
             "🔌 *Status:* TUNNEL GATEWAY UNREACHABLE\n\n"
             f"⚠️ *Details:* {reason}\n"
             "🔍 *Probable Cause:* tunnel.web.id server outage or DNS resolution failure.\n"
-            "🔧 *Action:* Check status.tunnel.web.id or contact provider support.\n\n"
+            "🔧 *Action:* Check https://status.tunnel.web.id or contact provider support.\n\n"
             "📊 *Dashboard:* https://mrtg.mriazh.my.id"
         )
 
