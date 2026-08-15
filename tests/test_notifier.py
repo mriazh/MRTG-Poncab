@@ -11,6 +11,9 @@ from mrtg_poncab.notifier import (
     SCENARIO_TUNNEL_SESSION_ERROR,
     format_autoheal_notice,
     format_down_alert,
+    format_duration,
+    format_network_restored_notice,
+    format_power_restored_notice,
     format_resolved_alert,
     format_shutdown_notice,
     format_startup_notice,
@@ -154,4 +157,33 @@ def test_format_autoheal_notice() -> None:
     assert "[NOC AUTO-HEAL]" in msg
     assert "#46486" in msg
     assert "Restart sukses" in msg
+
+
+def test_format_power_and_network_restored_notices() -> None:
+    """Test format_power_restored_notice and format_network_restored_notice."""
+    assert format_duration(45) == "45s"
+    assert format_duration(125) == "2m 5s"
+    assert format_duration(3665) == "1h 1m 5s"
+    assert format_duration(90000) == "1d 1h"
+
+    power_msg = format_power_restored_notice(
+        node_name="Debian Host",
+        last_seen="2026-09-21 14:00:00",
+        restored="2026-09-21 14:45:00",
+        downtime_seconds=2700,
+    )
+    assert "[NOC SYSTEM RESTORED]" in power_msg
+    assert "DEBIAN HOST POWER RECOVERED" in power_msg
+    assert "45m" in power_msg
+
+    net_msg = format_network_restored_notice(
+        node_name="Debian Host",
+        disconnected="2026-09-21 14:00:00",
+        reconnected="2026-09-21 14:15:00",
+        outage_seconds=900,
+    )
+    assert "[NOC NETWORK RESTORED]" in net_msg
+    assert "OFFICE INTERNET RECOVERED" in net_msg
+    assert "15m" in net_msg
+
 

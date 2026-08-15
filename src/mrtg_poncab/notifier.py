@@ -217,6 +217,69 @@ def format_autoheal_notice(
     )
 
 
+def format_duration(seconds: float | int) -> str:
+    """Format duration in seconds to a human-readable English string."""
+    total_sec = max(0, int(seconds))
+    days = total_sec // 86400
+    hours = (total_sec % 86400) // 3600
+    minutes = (total_sec % 3600) // 60
+    secs = total_sec % 60
+
+    parts: list[str] = []
+    if days > 0:
+        parts.append(f"{days}d")
+    if hours > 0:
+        parts.append(f"{hours}h")
+    if minutes > 0:
+        parts.append(f"{minutes}m")
+    if secs > 0 or not parts:
+        parts.append(f"{secs}s")
+
+    return " ".join(parts)
+
+
+def format_power_restored_notice(
+    node_name: str = "Debian Host (Poncab Monitor)",
+    last_seen: str = "",
+    restored: str = "",
+    downtime_seconds: float = 0.0,
+) -> str:
+    """Compose alert when Debian host boots up after prolonged downtime / power outage."""
+    dur_str = format_duration(downtime_seconds)
+    return (
+        "🟢 *[NOC SYSTEM RESTORED] DEBIAN HOST POWER RECOVERED!*\n\n"
+        f"💻 *Node:* {node_name}\n"
+        f"⏱ *Last Sample:* {last_seen} WIB\n"
+        f"⏱ *Restored:* {restored} WIB\n"
+        f"⏳ *Downtime Duration:* {dur_str}\n\n"
+        "📝 *Diagnosis:*\n"
+        "⚡ Host workstation experienced power outage or cold boot restart.\n"
+        "Monitoring daemon has resumed active polling.\n\n"
+        "📊 *Dashboard:* https://mrtg.mriazh.my.id"
+    )
+
+
+def format_network_restored_notice(
+    node_name: str = "Debian Host (Poncab Monitor)",
+    disconnected: str = "",
+    reconnected: str = "",
+    outage_seconds: float = 0.0,
+) -> str:
+    """Compose alert when local office internet connectivity recovers."""
+    dur_str = format_duration(outage_seconds)
+    return (
+        "🌐 *[NOC NETWORK RESTORED] OFFICE INTERNET RECOVERED!*\n\n"
+        f"💻 *Node:* {node_name}\n"
+        f"⏱ *Disconnect Time:* {disconnected} WIB\n"
+        f"⏱ *Reconnect Time:* {reconnected} WIB\n"
+        f"⏳ *Outage Duration:* {dur_str}\n\n"
+        "📝 *Diagnosis:*\n"
+        "🌐 Local office network / ISP connection restored while host remained powered on.\n"
+        "Outbound connectivity to public DNS and tunnel is re-established.\n\n"
+        "📊 *Dashboard:* https://mrtg.mriazh.my.id"
+    )
+
+
 def send_whatsapp_message(
     message: str,
     target_jid: str | None = None,

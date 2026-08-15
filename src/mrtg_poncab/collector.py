@@ -202,6 +202,7 @@ class TrafficCollector:
         # Watchdog and notification state
         self._consecutive_failures: int = 0
         self._is_currently_down: bool = False
+        self._local_net_down_epoch: float | None = None
 
         # Seed previous state from database if available
         self._seed_last_state()
@@ -323,6 +324,32 @@ class TrafficCollector:
                 self._last_tx_bytes = curr_tx
                 self._last_epoch = now_epoch
 
+            # Check if recovering from local network outage
+            if self._local_net_down_epoch is not None:
+                net_outage = now_epoch - self._local_net_down_epoch
+                if net_outage >= 30.0:
+                    try:
+                        from .notifier import (
+                            WIB_OFFSET,
+                            format_network_restored_notice,
+                            send_whatsapp_message,
+                        )
+
+                        dis_dt = (
+                            datetime.fromtimestamp(self._local_net_down_epoch, tz=UTC) + WIB_OFFSET
+                        )
+                        rec_dt = datetime.fromtimestamp(now_epoch, tz=UTC) + WIB_OFFSET
+                        net_msg = format_network_restored_notice(
+                            node_name="Debian Host (Poncab Monitor)",
+                            disconnected=dis_dt.strftime("%Y-%m-%d %H:%M:%S"),
+                            reconnected=rec_dt.strftime("%Y-%m-%d %H:%M:%S"),
+                            outage_seconds=net_outage,
+                        )
+                        send_whatsapp_message(net_msg)
+                    except Exception as net_err:
+                        logger.debug("Failed to dispatch network restored alert: %s", net_err)
+                self._local_net_down_epoch = None
+
             # Send resolved alert if recovering from a DOWN state
             if self._is_currently_down:
                 try:
@@ -346,6 +373,10 @@ class TrafficCollector:
             logger.warning("Collector failed to poll RouterOS API: %s", exc)
             self._consecutive_failures += 1
 
+            scenario, scenario_reason = self._diagnose_failure(exc)
+            if scenario == "DEBIAN_NET_DOWN" and self._local_net_down_epoch is None:
+                self._local_net_down_epoch = now_epoch
+
             # Dispatch DOWN alert when failure threshold is reached
             if (
                 self.config.wa_alert_enabled
@@ -353,7 +384,6 @@ class TrafficCollector:
                 and not self._is_currently_down
             ):
                 self._is_currently_down = True
-                scenario, scenario_reason = self._diagnose_failure(exc)
                 try:
                     from .notifier import format_down_alert, send_whatsapp_message
 
@@ -427,12 +457,41 @@ class TrafficCollector:
         # Dispatch online startup notice if WhatsApp alerts are enabled
         if self.config.wa_alert_enabled:
             try:
-                from .notifier import format_startup_notice, send_whatsapp_message
-
-                start_msg = format_startup_notice(
-                    node_name="Debian Host (Poncab Monitor)",
-                    target=f"{self.config.routeros_host}:{self.config.routeros_port}",
+                from .notifier import (
+                    WIB_OFFSET,
+                    format_power_restored_notice,
+                    format_startup_notice,
+                    send_whatsapp_message,
                 )
+
+                latest_sample = self.database.get_latest_sample()
+                now_epoch = self.clock()
+
+                if latest_sample and "epoch" in latest_sample and latest_sample["epoch"]:
+                    gap_seconds = now_epoch - float(latest_sample["epoch"])
+                    # If gap is 3 minutes (180s) or more, host experienced power outage / cold boot
+                    if gap_seconds >= 180.0:
+                        last_seen_dt = (
+                            datetime.fromtimestamp(latest_sample["epoch"], tz=UTC) + WIB_OFFSET
+                        )
+                        restored_dt = datetime.fromtimestamp(now_epoch, tz=UTC) + WIB_OFFSET
+                        start_msg = format_power_restored_notice(
+                            node_name="Debian Host (Poncab Monitor)",
+                            last_seen=last_seen_dt.strftime("%Y-%m-%d %H:%M:%S"),
+                            restored=restored_dt.strftime("%Y-%m-%d %H:%M:%S"),
+                            downtime_seconds=gap_seconds,
+                        )
+                    else:
+                        start_msg = format_startup_notice(
+                            node_name="Debian Host (Poncab Monitor)",
+                            target=f"{self.config.routeros_host}:{self.config.routeros_port}",
+                        )
+                else:
+                    start_msg = format_startup_notice(
+                        node_name="Debian Host (Poncab Monitor)",
+                        target=f"{self.config.routeros_host}:{self.config.routeros_port}",
+                    )
+
                 send_whatsapp_message(start_msg)
             except Exception as start_err:
                 logger.debug("Failed to dispatch startup notification: %s", start_err)
