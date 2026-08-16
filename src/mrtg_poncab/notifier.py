@@ -70,12 +70,12 @@ def format_down_alert(
     timestamp: str | None = None,
     scenario: str = SCENARIO_MIKROTIK_OFFLINE,
 ) -> str:
-    """Compose structured NOC incident alert message tailored to the diagnosed failure scenario."""
+    """Compose structured incident alert message tailored to the diagnosed failure scenario."""
     ts = timestamp or _now_wib_str()
 
     if scenario == SCENARIO_DEBIAN_NET_DOWN:
         return (
-            "🚨 *[NOC ALERT] DEBIAN MONITOR NETWORK DOWN!*\n\n"
+            "🚨 *[ALERT] DEBIAN MONITOR NETWORK DOWN!*\n\n"
             f"💻 *Node:* Debian Host (Poncab Monitor)\n"
             "🏢 *Location:* Office LAN / Headquarters\n"
             f"⏱ *Time:* {ts} WIB\n"
@@ -88,7 +88,7 @@ def format_down_alert(
 
     if scenario == SCENARIO_TUNNEL_PROVIDER_DOWN:
         return (
-            "🚨 *[NOC ALERT] TUNNEL PROVIDER SERVICE DOWN!*\n\n"
+            "🚨 *[ALERT] TUNNEL PROVIDER SERVICE DOWN!*\n\n"
             f"📍 *Target:* {router_name}\n"
             "🏢 *Provider:* tunnel.web.id Infrastructure\n"
             f"⏱ *Time:* {ts} WIB\n"
@@ -101,7 +101,7 @@ def format_down_alert(
 
     if scenario == SCENARIO_TUNNEL_SESSION_ERROR:
         return (
-            "⚠️ *[NOC ALERT] TUNNEL SESSION SUSPENDED!*\n\n"
+            "⚠️ *[ALERT] TUNNEL SESSION SUSPENDED!*\n\n"
             f"📍 *Target:* {router_name}\n"
             "🏢 *Provider:* tunnel.web.id Portal\n"
             f"⏱ *Time:* {ts} WIB\n"
@@ -114,7 +114,7 @@ def format_down_alert(
 
     # Default: SCENARIO_MIKROTIK_OFFLINE
     return (
-        "🚨 *[NOC ALERT] MIKROTIK PONCAB OFFLINE!*\n\n"
+        "🚨 *[ALERT] MIKROTIK PONCAB OFFLINE!*\n\n"
         f"📍 *Device:* {router_name}\n"
         f"🏢 *Location:* {location}\n"
         f"⏱ *Time:* {ts} WIB\n"
@@ -133,11 +133,62 @@ def format_resolved_alert(
     router_name: str = "MikroTik RB960PGS (WAN 150M)",
     location: str = "GMF AeroAsia Pondok Cabe",
     timestamp: str | None = None,
+    scenario: str = SCENARIO_MIKROTIK_OFFLINE,
 ) -> str:
-    """Compose structured NOC resolution message with automated root-cause diagnosis."""
+    """Compose structured resolution message tailored to the initial failure scenario."""
     ts = timestamp or _now_wib_str()
-    is_reboot = is_recent_reboot(uptime)
+    in_fmt = format_engineering_bits(rx_bps)
+    out_fmt = format_engineering_bits(tx_bps)
 
+    if scenario == SCENARIO_TUNNEL_PROVIDER_DOWN:
+        return (
+            "✅ *[RESOLVED] TUNNEL PROVIDER SERVICE RESTORED!*\n\n"
+            f"📍 *Target:* {router_name}\n"
+            "🏢 *Provider:* tunnel.web.id Infrastructure\n"
+            f"⏱ *Time:* {ts} WIB\n"
+            "🔌 *Status:* UP (Connected)\n"
+            f"⏳ *Uptime:* {uptime}\n"
+            f"📈 *Live Traffic:* In: {in_fmt} | Out: {out_fmt}\n\n"
+            "📝 *System Diagnosis:*\n"
+            "🌐 *TUNNEL GATEWAY RESTORED*\n"
+            "tunnel.web.id server connectivity recovered. "
+            "SSTP tunnel and RouterOS API polling are fully re-established.\n\n"
+            "📊 *Dashboard:* https://mrtg.mriazh.my.id"
+        )
+
+    if scenario == SCENARIO_TUNNEL_SESSION_ERROR:
+        return (
+            "✅ *[RESOLVED] TUNNEL SESSION RECOVERED!*\n\n"
+            f"📍 *Target:* {router_name}\n"
+            "🏢 *Provider:* tunnel.web.id Portal\n"
+            f"⏱ *Time:* {ts} WIB\n"
+            "🔌 *Status:* UP (Connected)\n"
+            f"⏳ *Uptime:* {uptime}\n"
+            f"📈 *Live Traffic:* In: {in_fmt} | Out: {out_fmt}\n\n"
+            "📝 *System Diagnosis:*\n"
+            "🔄 *TUNNEL SESSION RESTORED*\n"
+            "Tunnel session on tunnel.web.id recovered successfully. "
+            "RouterOS API communication is active.\n\n"
+            "📊 *Dashboard:* https://mrtg.mriazh.my.id"
+        )
+
+    if scenario == SCENARIO_DEBIAN_NET_DOWN:
+        return (
+            "✅ *[RESOLVED] DEBIAN MONITOR NETWORK RESTORED!*\n\n"
+            f"💻 *Node:* Debian Host (Poncab Monitor)\n"
+            f"⏱ *Time:* {ts} WIB\n"
+            "🔌 *Status:* UP (Connected)\n"
+            f"⏳ *Uptime:* {uptime}\n"
+            f"📈 *Live Traffic:* In: {in_fmt} | Out: {out_fmt}\n\n"
+            "📝 *System Diagnosis:*\n"
+            "🌐 *LOCAL NETWORK RECOVERED*\n"
+            "Debian host outbound internet connectivity restored. "
+            "RouterOS API polling resumed.\n\n"
+            "📊 *Dashboard:* https://mrtg.mriazh.my.id"
+        )
+
+    # Default: SCENARIO_MIKROTIK_OFFLINE
+    is_reboot = is_recent_reboot(uptime)
     if is_reboot:
         diagnosis = (
             "⚡ *RECENT POWER OUTAGE / REBOOT*\n"
@@ -151,11 +202,8 @@ def format_resolved_alert(
             "IndiBiz ISP uplink or tunnel session dropped momentarily and is now re-established."
         )
 
-    in_fmt = format_engineering_bits(rx_bps)
-    out_fmt = format_engineering_bits(tx_bps)
-
     return (
-        "✅ *[NOC RESOLVED] MIKROTIK PONCAB ONLINE!*\n\n"
+        "✅ *[RESOLVED] MIKROTIK PONCAB ONLINE!*\n\n"
         f"📍 *Device:* {router_name}\n"
         f"🏢 *Location:* {location}\n"
         f"⏱ *Time:* {ts} WIB\n"
@@ -175,7 +223,7 @@ def format_startup_notice(
     """Compose informational daemon startup / system online notice."""
     ts = timestamp or _now_wib_str()
     return (
-        "🟢 *[NOC SYSTEM ONLINE] MRTG Collector Daemon Started*\n\n"
+        "🟢 *[SYSTEM ONLINE] MRTG Collector Daemon Started*\n\n"
         f"💻 *Node:* {node_name}\n"
         f"🎯 *Target:* {target}\n"
         f"⏱ *Time:* {ts} WIB\n"
@@ -192,7 +240,7 @@ def format_shutdown_notice(
     """Compose informational daemon graceful shutdown notice."""
     ts = timestamp or _now_wib_str()
     return (
-        "⏸️ *[NOC SYSTEM STOPPED] MRTG Collector Daemon Stopping*\n\n"
+        "⏸️ *[SYSTEM STOPPED] MRTG Collector Daemon Stopping*\n\n"
         f"💻 *Node:* {node_name}\n"
         f"⏱ *Time:* {ts} WIB\n"
         f"ℹ️ *Note:* {reason}\n"
@@ -208,7 +256,7 @@ def format_autoheal_notice(
     """Compose informational auto-heal notification when tunnel restart is triggered."""
     ts = timestamp or _now_wib_str()
     return (
-        "🔄 *[NOC AUTO-HEAL] TUNNEL RESTART TRIGGERED!*\n\n"
+        "🔄 *[AUTO-HEAL] TUNNEL RESTART TRIGGERED!*\n\n"
         f"📍 *Service ID:* #{service_id}\n"
         f"⏱ *Time:* {ts} WIB\n"
         "⚠️ *Issue:* 'Koneksi Error' detected on tunnel.web.id portal.\n"
@@ -247,7 +295,7 @@ def format_power_restored_notice(
     """Compose alert when Debian host boots up after prolonged downtime / power outage."""
     dur_str = format_duration(downtime_seconds)
     return (
-        "🟢 *[NOC SYSTEM RESTORED] DEBIAN HOST POWER RECOVERED!*\n\n"
+        "🟢 *[SYSTEM RESTORED] DEBIAN HOST POWER RECOVERED!*\n\n"
         f"💻 *Node:* {node_name}\n"
         f"⏱ *Last Sample:* {last_seen} WIB\n"
         f"⏱ *Restored:* {restored} WIB\n"
@@ -268,7 +316,7 @@ def format_network_restored_notice(
     """Compose alert when local office internet connectivity recovers."""
     dur_str = format_duration(outage_seconds)
     return (
-        "🌐 *[NOC NETWORK RESTORED] OFFICE INTERNET RECOVERED!*\n\n"
+        "🌐 *[NETWORK RESTORED] OFFICE INTERNET RECOVERED!*\n\n"
         f"💻 *Node:* {node_name}\n"
         f"⏱ *Disconnect Time:* {disconnected} WIB\n"
         f"⏱ *Reconnect Time:* {reconnected} WIB\n"

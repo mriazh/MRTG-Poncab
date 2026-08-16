@@ -202,6 +202,7 @@ class TrafficCollector:
         # Watchdog and notification state
         self._consecutive_failures: int = 0
         self._is_currently_down: bool = False
+        self._active_down_scenario: str = "MIKROTIK_OFFLINE"
         self._local_net_down_epoch: float | None = None
 
         # Seed previous state from database if available
@@ -360,11 +361,13 @@ class TrafficCollector:
                         rx_bps=rate.rx_bps,
                         tx_bps=rate.tx_bps,
                         router_name=f"WAN ({self.config.routeros_interface})",
+                        scenario=self._active_down_scenario,
                     )
                     send_whatsapp_message(resolved_msg)
                 except Exception as alert_err:
                     logger.warning("Failed to send WhatsApp resolved alert: %s", alert_err)
                 self._is_currently_down = False
+                self._active_down_scenario = "MIKROTIK_OFFLINE"
 
             self._consecutive_failures = 0
             return sample
@@ -384,6 +387,7 @@ class TrafficCollector:
                 and not self._is_currently_down
             ):
                 self._is_currently_down = True
+                self._active_down_scenario = scenario
                 try:
                     from .notifier import format_down_alert, send_whatsapp_message
 

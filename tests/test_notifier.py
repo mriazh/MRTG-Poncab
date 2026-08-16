@@ -49,7 +49,7 @@ def test_format_down_alert_scenarios() -> None:
         scenario=SCENARIO_DEBIAN_NET_DOWN,
         timestamp="2026-09-21 10:00:00",
     )
-    assert "[NOC ALERT] DEBIAN MONITOR NETWORK DOWN" in msg1
+    assert "[ALERT] DEBIAN MONITOR NETWORK DOWN" in msg1
     assert "OUTBOUND NETWORK UNREACHABLE" in msg1
 
     # Scenario 2: Tunnel Provider Down
@@ -58,7 +58,7 @@ def test_format_down_alert_scenarios() -> None:
         scenario=SCENARIO_TUNNEL_PROVIDER_DOWN,
         timestamp="2026-09-21 10:00:00",
     )
-    assert "[NOC ALERT] TUNNEL PROVIDER SERVICE DOWN" in msg2
+    assert "[ALERT] TUNNEL PROVIDER SERVICE DOWN" in msg2
     assert "TUNNEL GATEWAY UNREACHABLE" in msg2
 
     # Scenario 3: Tunnel Session Suspended (Koneksi Error)
@@ -67,7 +67,7 @@ def test_format_down_alert_scenarios() -> None:
         scenario=SCENARIO_TUNNEL_SESSION_ERROR,
         timestamp="2026-09-21 10:00:00",
     )
-    assert "[NOC ALERT] TUNNEL SESSION SUSPENDED" in msg3
+    assert "[ALERT] TUNNEL SESSION SUSPENDED" in msg3
     assert "SESSION ERROR (Koneksi Error)" in msg3
     assert "Auto-Healing" in msg3
 
@@ -77,9 +77,42 @@ def test_format_down_alert_scenarios() -> None:
         scenario=SCENARIO_MIKROTIK_OFFLINE,
         timestamp="2026-09-21 10:00:00",
     )
-    assert "[NOC ALERT] MIKROTIK PONCAB OFFLINE" in msg4
+    assert "[ALERT] MIKROTIK PONCAB OFFLINE" in msg4
     assert "DOWN (Unreachable)" in msg4
     assert "Facility power outage at Poncab" in msg4
+
+
+def test_format_resolved_alert_adaptive_scenarios() -> None:
+    """format_resolved_alert adapts recovery message to match the initial failure scenario."""
+    # Recovering from Tunnel Provider Down
+    msg_tunnel = format_resolved_alert(
+        uptime="11w3d",
+        rx_bps=1_000_000.0,
+        tx_bps=500_000.0,
+        scenario=SCENARIO_TUNNEL_PROVIDER_DOWN,
+    )
+    assert "[RESOLVED] TUNNEL PROVIDER SERVICE RESTORED" in msg_tunnel
+    assert "TUNNEL GATEWAY RESTORED" in msg_tunnel
+
+    # Recovering from Tunnel Session Error
+    msg_session = format_resolved_alert(
+        uptime="11w3d",
+        rx_bps=1_000_000.0,
+        tx_bps=500_000.0,
+        scenario=SCENARIO_TUNNEL_SESSION_ERROR,
+    )
+    assert "[RESOLVED] TUNNEL SESSION RECOVERED" in msg_session
+    assert "TUNNEL SESSION RESTORED" in msg_session
+
+    # Recovering from Debian Network Down
+    msg_deb = format_resolved_alert(
+        uptime="11w3d",
+        rx_bps=1_000_000.0,
+        tx_bps=500_000.0,
+        scenario=SCENARIO_DEBIAN_NET_DOWN,
+    )
+    assert "[RESOLVED] DEBIAN MONITOR NETWORK RESTORED" in msg_deb
+    assert "LOCAL NETWORK RECOVERED" in msg_deb
 
 
 def test_format_resolved_alert_power_outage() -> None:
@@ -89,7 +122,7 @@ def test_format_resolved_alert_power_outage() -> None:
         rx_bps=10_000_000.0,
         tx_bps=5_000_000.0,
     )
-    assert "[NOC RESOLVED]" in msg
+    assert "[RESOLVED]" in msg
     assert "UP" in msg
     assert "RECENT POWER OUTAGE" in msg
 
@@ -101,7 +134,7 @@ def test_format_resolved_alert_isp_outage() -> None:
         rx_bps=10_000_000.0,
         tx_bps=5_000_000.0,
     )
-    assert "[NOC RESOLVED]" in msg
+    assert "[RESOLVED]" in msg
     assert "UP" in msg
     assert "TRANSIENT ISP" in msg
 
@@ -134,7 +167,7 @@ def test_format_startup_and_shutdown_notices() -> None:
         target="10.0.0.1:8728",
         timestamp="2026-09-20 20:00:00",
     )
-    assert "[NOC SYSTEM ONLINE]" in start_msg
+    assert "[SYSTEM ONLINE]" in start_msg
     assert "Test Node" in start_msg
     assert "10.0.0.1:8728" in start_msg
 
@@ -143,7 +176,7 @@ def test_format_startup_and_shutdown_notices() -> None:
         reason="Maintenance restart",
         timestamp="2026-09-20 20:01:00",
     )
-    assert "[NOC SYSTEM STOPPED]" in stop_msg
+    assert "[SYSTEM STOPPED]" in stop_msg
     assert "Maintenance restart" in stop_msg
 
 
@@ -154,7 +187,7 @@ def test_format_autoheal_notice() -> None:
         action_message="Restart sukses",
         timestamp="2026-09-20 20:02:00",
     )
-    assert "[NOC AUTO-HEAL]" in msg
+    assert "[AUTO-HEAL]" in msg
     assert "#46486" in msg
     assert "Restart sukses" in msg
 
@@ -172,7 +205,7 @@ def test_format_power_and_network_restored_notices() -> None:
         restored="2026-09-21 14:45:00",
         downtime_seconds=2700,
     )
-    assert "[NOC SYSTEM RESTORED]" in power_msg
+    assert "[SYSTEM RESTORED]" in power_msg
     assert "DEBIAN HOST POWER RECOVERED" in power_msg
     assert "45m" in power_msg
 
@@ -182,7 +215,7 @@ def test_format_power_and_network_restored_notices() -> None:
         reconnected="2026-09-21 14:15:00",
         outage_seconds=900,
     )
-    assert "[NOC NETWORK RESTORED]" in net_msg
+    assert "[NETWORK RESTORED]" in net_msg
     assert "OFFICE INTERNET RECOVERED" in net_msg
     assert "15m" in net_msg
 
