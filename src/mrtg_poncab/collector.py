@@ -222,6 +222,7 @@ class TrafficCollector:
         Returns:
             (scenario_code: str, reason_detail: str)
         """
+        failure_reason = str(exc)
         from .notifier import (
             SCENARIO_DEBIAN_NET_DOWN,
             SCENARIO_MIKROTIK_OFFLINE,
@@ -245,46 +246,74 @@ class TrafficCollector:
                 "Local host failed to reach public DNS (1.1.1.1 / 8.8.8.8). Outbound network down.",
             )
 
-        # Layer 2: Test if tunnel provider host is resolvable and alive on HTTPS (443)
-        host = self.config.routeros_host
-        try:
-            resolved_ip = socket.gethostbyname(host)
-        except socket.gaierror:
-            return (
-                SCENARIO_TUNNEL_PROVIDER_DOWN,
-                f"Cannot resolve tunnel host '{host}'. Provider DNS outage.",
-            )
-
-        try:
-            with socket.create_connection((resolved_ip, 443), timeout=3.0):
-                server_alive = True
-        except (TimeoutError, ConnectionRefusedError, OSError):
-            server_alive = False
-
-        if not server_alive:
-            return (
-                SCENARIO_TUNNEL_PROVIDER_DOWN,
-                f"Tunnel server '{host}' ({resolved_ip}) is unreachable on port 443.",
-            )
-
-        # Layer 3: Inspect tunnel.web.id portal if credentials are configured
-        if self.config.tunnel_web_email and self.config.tunnel_web_password:
+        # Layer 2: Inspect tunnel.web.id portal if credentials and service ID are configured.
+        portal_available = False
+        if (
+            self.config.tunnel_web_email
+            and self.config.tunnel_web_password
+            and self.config.tunnel_web_service_id
+        ):
             try:
                 from .tunnel_watchdog import tunnel_watchdog
 
                 portal = tunnel_watchdog.inspect_member_portal()
-                if portal.get("code") == "KONEKSI_ERROR" or portal.get("needs_restart"):
+                portal_available = bool(portal.get("success"))
+                if portal.get("code") == "KONEKSI_ERROR":
                     return (
                         SCENARIO_TUNNEL_SESSION_ERROR,
                         f"'Koneksi Error' detected on tunnel #{self.config.tunnel_web_service_id}.",
                     )
-            except Exception as e:
-                logger.debug("Portal inspection exception during failure diagnosis: %s", e)
+                if portal.get("code") == "DISCONNECTED":
+                    logger.info(
+                        "Tunnel portal reports DISCONNECTED; continuing to MikroTik "
+                        "offline classification"
+                    )
+            except Exception as exc:
+                logger.debug("Portal inspection exception during failure diagnosis: %s", exc)
 
-        # Layer 4: Tunnel is healthy, but router port is closed -> MikroTik offline
+        # A portal response explicitly reporting DISCONNECTED is sufficient to
+        # classify the remote router as offline; do not reclassify via transport.
+        if portal_available and portal.get("code") == "DISCONNECTED":
+            return (
+                SCENARIO_MIKROTIK_OFFLINE,
+                (
+                    f"Tunnel portal reports the remote router disconnected "
+                    f"from {self.config.routeros_host}."
+                ),
+            )
+
+        # Layer 3: Validate provider reachability only after portal inspection.
+        host = self.config.routeros_host
+        try:
+            resolved_ip = socket.gethostbyname(host)
+        except socket.gaierror:
+            if not portal_available:
+                return (
+                    SCENARIO_TUNNEL_PROVIDER_DOWN,
+                    f"Cannot resolve tunnel host '{host}'. Provider DNS outage.",
+                )
+            resolved_ip = ""
+
+        server_alive = False
+        if resolved_ip:
+            try:
+                with socket.create_connection((resolved_ip, 443), timeout=3.0):
+                    server_alive = True
+            except (TimeoutError, ConnectionRefusedError, OSError):
+                pass
+
+        if not server_alive and not portal_available:
+            return (
+                SCENARIO_TUNNEL_PROVIDER_DOWN,
+                f"Tunnel server '{host}' ({resolved_ip or 'unresolved'}) is unreachable "
+                "on port 443.",
+            )
+
+        # Layer 4: Portal is healthy/disconnected or provider is reachable, so the
+        # RouterOS endpoint itself is treated as offline.
         return (
             SCENARIO_MIKROTIK_OFFLINE,
-            f"API connection timed out on {host}:{self.config.routeros_port} ({exc}).",
+            f"API connection timed out on {host}:{self.config.routeros_port} ({failure_reason}).",
         )
 
     def poll_once(self) -> TrafficSample | None:
@@ -400,8 +429,12 @@ class TrafficCollector:
                 except Exception as alert_err:
                     logger.warning("Failed to send WhatsApp down alert: %s", alert_err)
 
-            # Check watchdog auto-healing if configured
-            if self.config.tunnel_auto_restart and self.config.tunnel_web_email:
+            # Check watchdog auto-healing if configured and local internet is available
+            if (
+                self.config.tunnel_auto_restart
+                and self.config.tunnel_web_email
+                and scenario != "DEBIAN_NET_DOWN"
+            ):
                 try:
                     from .tunnel_watchdog import tunnel_watchdog
 

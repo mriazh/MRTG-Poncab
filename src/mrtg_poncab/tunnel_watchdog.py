@@ -151,16 +151,38 @@ class TunnelWatchdog:
                 # Try querying status API directly if available
                 try:
                     status_api_resp = client.get(status_api_url)
-                    if status_api_resp.status_code == 200:
+                    if status_api_resp.status_code < 500:
                         status_json = status_api_resp.json()
-                        raw_status = str(status_json.get("status", "")).lower()
-                        if "error" in raw_status:
-                            has_koneksi_error = True
-                        elif "terhubung" in raw_status and "tidak" not in raw_status:
+                        status_code = str(status_json.get("code", "")).strip()
+                        status_text = " ".join(
+                            str(status_json.get(field, ""))
+                            for field in ("message", "response", "code", "status")
+                        ).lower()
+                        has_koneksi_error = status_code == "405" or (
+                            "koneksi error" in status_text
+                        )
+                        if has_koneksi_error:
+                            has_terhubung = False
+                            has_tidak_terhubung = False
+                        elif "tidak terhubung" in status_text:
+                            has_tidak_terhubung = True
+                            has_terhubung = False
+                        elif "terhubung" in status_text:
                             has_terhubung = True
                             has_tidak_terhubung = False
-                except Exception:
-                    pass
+                        logger.info(
+                            "Tunnel service status inspected: api_code=%s, classified=%s",
+                            status_code or "unknown",
+                            "KONEKSI_ERROR"
+                            if has_koneksi_error
+                            else "CONNECTED"
+                            if has_terhubung
+                            else "DISCONNECTED"
+                            if has_tidak_terhubung
+                            else "UNKNOWN",
+                        )
+                except Exception as exc:
+                    logger.warning("Tunnel service status API inspection failed: %s", exc)
 
                 service_status = "UNKNOWN"
                 if has_koneksi_error:
@@ -178,7 +200,6 @@ class TunnelWatchdog:
                     "restart_url": diagnosa_restart_url,
                     "message": f"Service #{srv_id} status on tunnel.web.id: {service_status}",
                     "cookies": dict(client.cookies),
-                    "raw_body": body,
                 }
 
         except Exception as e:

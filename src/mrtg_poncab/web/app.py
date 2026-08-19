@@ -635,9 +635,10 @@ def api_tunnel_diagnose(
     portal_info = None
     if settings.tunnel_web_email and settings.tunnel_web_password:
         portal_info = tunnel_watchdog.inspect_member_portal()
-        # Remove client object before JSON serialization
-        if portal_info and "client" in portal_info:
+        # Remove internal session state before JSON serialization
+        if portal_info:
             portal_info.pop("client", None)
+            portal_info.pop("cookies", None)
             portal_info.pop("raw_body", None)
 
     return {

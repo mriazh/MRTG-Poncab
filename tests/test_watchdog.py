@@ -5,7 +5,24 @@ from __future__ import annotations
 import time
 from unittest.mock import MagicMock, patch
 
-from mrtg_poncab.tunnel_watchdog import TunnelWatchdog
+from mrtg_poncab.tunnel_watchdog import MEMBER_BASE_URL, TunnelWatchdog
+
+
+def _mock_portal_client(status_json: dict[str, object], detail_body: str = "") -> MagicMock:
+    client = MagicMock()
+    client.__enter__.return_value = client
+    client.cookies = {"PHPSESSID": "session-cookie"}
+
+    login_response = MagicMock()
+    login_response.json.return_value = {"code": "200"}
+    detail_response = MagicMock()
+    detail_response.text = detail_body
+    status_response = MagicMock()
+    status_response.status_code = 200
+    status_response.json.return_value = status_json
+    client.post.return_value = login_response
+    client.get.side_effect = [detail_response, status_response]
+    return client
 
 
 def test_watchdog_diagnose_healthy() -> None:
@@ -34,6 +51,64 @@ def test_watchdog_diagnose_port_closed() -> None:
         assert diag["code"] == "PORT_CLOSED"
         assert diag["status"] == "DOWN"
         assert "port 5336 is closed" in diag["message"]
+
+
+def test_inspect_member_portal_classifies_real_koneksi_error_response() -> None:
+    """The member status API's real 405 payload triggers a restart recommendation."""
+    wd = TunnelWatchdog()
+    client = _mock_portal_client(
+        {
+            "code": "405",
+            "message": "Koneksi Error",
+            "response": "<div>Koneksi Error, Silahkan Restart VPN.</div>",
+        }
+    )
+
+    with patch("httpx.Client", return_value=client):
+        result = wd.inspect_member_portal("user@example.test", "password", "123")
+
+    assert result["code"] == "KONEKSI_ERROR"
+    assert result["needs_restart"] is True
+    assert result["restart_url"] == f"{MEMBER_BASE_URL}/api/api-layanan-diagnosa.php?id=123"
+    assert result["cookies"] == {"PHPSESSID": "session-cookie"}
+
+
+def test_inspect_member_portal_classifies_response_only_koneksi_error() -> None:
+    """A Koneksi Error in the response field is enough to trigger auto-healing."""
+    wd = TunnelWatchdog()
+    client = _mock_portal_client(
+        {"code": "200", "message": "", "response": "Koneksi Error, restart VPN"}
+    )
+
+    with patch("httpx.Client", return_value=client):
+        result = wd.inspect_member_portal("user@example.test", "password", "123")
+
+    assert result["code"] == "KONEKSI_ERROR"
+    assert result["needs_restart"] is True
+
+
+def test_inspect_member_portal_preserves_connected_status() -> None:
+    """A connected API status remains CONNECTED and is not marked for restart."""
+    wd = TunnelWatchdog()
+    client = _mock_portal_client({"code": "200", "message": "Terhubung", "response": ""})
+
+    with patch("httpx.Client", return_value=client):
+        result = wd.inspect_member_portal("user@example.test", "password", "123")
+
+    assert result["code"] == "CONNECTED"
+    assert result["needs_restart"] is False
+
+
+def test_inspect_member_portal_does_not_classify_tidak_terhubung_as_connected() -> None:
+    """A disconnected status must not be promoted to CONNECTED by substring matching."""
+    wd = TunnelWatchdog()
+    client = _mock_portal_client({"code": "200", "message": "Tidak Terhubung", "response": ""})
+
+    with patch("httpx.Client", return_value=client):
+        result = wd.inspect_member_portal("user@example.test", "password", "123")
+
+    assert result["code"] == "DISCONNECTED"
+    assert result["needs_restart"] is False
 
 
 def test_watchdog_cooldown_guard() -> None:

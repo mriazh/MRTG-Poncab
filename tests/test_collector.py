@@ -200,18 +200,19 @@ def test_diagnose_failure_scenarios(tmp_path: Path) -> None:
         assert scenario == SCENARIO_TUNNEL_PROVIDER_DOWN
         assert "DNS outage" in reason
 
-    # Scenario 3: Portal reports Koneksi Error
+    # Scenario 3: Portal reports Koneksi Error before tunnel host validation
     def mock_socket_alive(addr: tuple[str, int], timeout: float = 2.0) -> object:
         return MagicMock()
 
     with (
         patch("socket.create_connection", side_effect=mock_socket_alive),
-        patch("socket.gethostbyname", return_value="157.66.54.157"),
-        patch("mrtg_poncab.config.settings.tunnel_web_email", "user@test.com"),
-        patch("mrtg_poncab.config.settings.tunnel_web_password", "secret"),
+        patch("socket.gethostbyname", side_effect=AssertionError("portal must be inspected first")),
+        patch.object(collector.config, "tunnel_web_email", "user@test.com"),
+        patch.object(collector.config, "tunnel_web_password", "<REDACTED>"),
+        patch.object(collector.config, "tunnel_web_service_id", "123"),
         patch(
             "mrtg_poncab.tunnel_watchdog.tunnel_watchdog.inspect_member_portal",
-            return_value={"code": "KONEKSI_ERROR", "needs_restart": True},
+            return_value={"success": True, "code": "KONEKSI_ERROR", "needs_restart": True},
         ),
     ):
         scenario, reason = collector._diagnose_failure(RuntimeError("timeout"))
@@ -222,7 +223,9 @@ def test_diagnose_failure_scenarios(tmp_path: Path) -> None:
     with (
         patch("socket.create_connection", side_effect=mock_socket_alive),
         patch("socket.gethostbyname", return_value="157.66.54.157"),
-        patch("mrtg_poncab.config.settings.tunnel_web_email", None),
+        patch.object(collector.config, "tunnel_web_email", None),
+        patch.object(collector.config, "tunnel_web_password", None),
+        patch.object(collector.config, "tunnel_web_service_id", None),
     ):
         scenario, reason = collector._diagnose_failure(RuntimeError("timed out"))
         assert scenario == SCENARIO_MIKROTIK_OFFLINE
