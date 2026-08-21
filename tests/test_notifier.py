@@ -7,6 +7,7 @@ from unittest.mock import MagicMock, patch
 from mrtg_poncab.notifier import (
     SCENARIO_DEBIAN_NET_DOWN,
     SCENARIO_MIKROTIK_OFFLINE,
+    SCENARIO_ROUTEROS_API_DOWN,
     SCENARIO_TUNNEL_PROVIDER_DOWN,
     SCENARIO_TUNNEL_SESSION_ERROR,
     format_autoheal_notice,
@@ -81,6 +82,17 @@ def test_format_down_alert_scenarios() -> None:
     assert "DOWN (Unreachable)" in msg4
     assert "Facility power outage" in msg4
 
+    # Scenario 5: RouterOS API Down
+    msg5 = format_down_alert(
+        reason="API connection timed out on id-04.tunnel.web.id:5336",
+        scenario=SCENARIO_ROUTEROS_API_DOWN,
+        timestamp="2026-09-21 10:00:00",
+    )
+    assert "[ALERT] MIKROTIK API SERVICE UNRESPONSIVE" in msg5
+    assert "API SERVICE CLOSED (WAN Internet Online)" in msg5
+    assert "RouterOS API service (/ip service api port 8728) is hung" in msg5
+    assert "Verify RouterOS API service status via Winbox or console (/ip service print)." in msg5
+
 
 def test_format_resolved_alert_adaptive_scenarios() -> None:
     """format_resolved_alert adapts recovery message to match the initial failure scenario."""
@@ -113,6 +125,17 @@ def test_format_resolved_alert_adaptive_scenarios() -> None:
     )
     assert "[RESOLVED] DEBIAN MONITOR NETWORK RESTORED" in msg_deb
     assert "LOCAL NETWORK RECOVERED" in msg_deb
+
+    # Recovering from RouterOS API Down
+    msg_api = format_resolved_alert(
+        uptime="11w3d",
+        rx_bps=1_000_000.0,
+        tx_bps=500_000.0,
+        scenario=SCENARIO_ROUTEROS_API_DOWN,
+    )
+    assert "[RESOLVED] MIKROTIK API SERVICE RESTORED" in msg_api
+    assert "ROUTEROS API SERVICE RESTORED" in msg_api
+    assert "RouterOS API service (/ip service api) resumed accepting connections." in msg_api
 
 
 def test_format_resolved_alert_power_outage() -> None:

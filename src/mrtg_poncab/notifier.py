@@ -61,6 +61,7 @@ SCENARIO_DEBIAN_NET_DOWN = "DEBIAN_NET_DOWN"
 SCENARIO_TUNNEL_PROVIDER_DOWN = "TUNNEL_PROVIDER_DOWN"
 SCENARIO_TUNNEL_SESSION_ERROR = "TUNNEL_SESSION_ERROR"
 SCENARIO_MIKROTIK_OFFLINE = "MIKROTIK_OFFLINE"
+SCENARIO_ROUTEROS_API_DOWN = "ROUTEROS_API_DOWN"
 
 
 def format_down_alert(
@@ -113,6 +114,22 @@ def format_down_alert(
             f"⚠️ *Details:* {reason}\n"
             "🔍 *Probable Cause:* Ghost session collision on tunnel.web.id server.\n"
             "🤖 *Auto-Healing:* Auto-restart triggered via portal API.\n\n"
+            "📊 *Dashboard:* https://mrtg.mriazh.my.id"
+        )
+
+    if scenario == SCENARIO_ROUTEROS_API_DOWN:
+        return (
+            "🚨 *[ALERT] MIKROTIK API SERVICE UNRESPONSIVE!*\n\n"
+            f"📍 *Device:* {r_name}\n"
+            f"🏢 *Location:* {loc}\n"
+            f"⏱ *Time:* {ts} WIB\n"
+            "🔌 *Status:* API SERVICE CLOSED (WAN Internet Online)\n\n"
+            f"⚠️ *Details:* {reason}\n"
+            "🔍 *Probable Cause:* RouterOS API service (/ip service api port 8728) is hung, "
+            "crashed, or blocked by firewall, while branch WAN internet and SSTP tunnel "
+            "remain connected.\n"
+            "🔧 *Action:* Verify RouterOS API service status via Winbox or "
+            "console (/ip service print).\n\n"
             "📊 *Dashboard:* https://mrtg.mriazh.my.id"
         )
 
@@ -194,6 +211,22 @@ def format_resolved_alert(
             "🌐 *LOCAL NETWORK RECOVERED*\n"
             "Debian host outbound internet connectivity restored. "
             "RouterOS API polling resumed.\n\n"
+            "📊 *Dashboard:* https://mrtg.mriazh.my.id"
+        )
+
+    if scenario == SCENARIO_ROUTEROS_API_DOWN:
+        return (
+            "✅ *[RESOLVED] MIKROTIK API SERVICE RESTORED!*\n\n"
+            f"📍 *Device:* {r_name}\n"
+            f"🏢 *Location:* {loc}\n"
+            f"⏱ *Time:* {ts} WIB\n"
+            "🔌 *Status:* UP (Connected)\n"
+            f"⏳ *Uptime:* {uptime}\n"
+            f"📈 *Live Traffic:* In: {in_fmt} | Out: {out_fmt}\n\n"
+            "📝 *System Diagnosis:*\n"
+            "⚙️ *ROUTEROS API SERVICE RESTORED*\n"
+            "RouterOS API service (/ip service api) resumed accepting connections. "
+            "WAN uplink remained stable throughout.\n\n"
             "📊 *Dashboard:* https://mrtg.mriazh.my.id"
         )
 

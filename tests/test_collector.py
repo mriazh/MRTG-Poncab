@@ -166,12 +166,13 @@ def test_traffic_collector_poll_lifecycle(tmp_path: Path) -> None:
 
 
 def test_diagnose_failure_scenarios(tmp_path: Path) -> None:
-    """_diagnose_failure correctly classifies 4 failure scenarios."""
+    """_diagnose_failure correctly classifies 5 failure scenarios."""
     from unittest.mock import MagicMock, patch
 
     from mrtg_poncab.notifier import (
         SCENARIO_DEBIAN_NET_DOWN,
         SCENARIO_MIKROTIK_OFFLINE,
+        SCENARIO_ROUTEROS_API_DOWN,
         SCENARIO_TUNNEL_PROVIDER_DOWN,
         SCENARIO_TUNNEL_SESSION_ERROR,
     )
@@ -219,7 +220,24 @@ def test_diagnose_failure_scenarios(tmp_path: Path) -> None:
         assert scenario == SCENARIO_TUNNEL_SESSION_ERROR
         assert "Koneksi Error" in reason
 
-    # Scenario 4: Default MikroTik offline
+    # Scenario 4: Portal reports CONNECTED but port 5336 fails -> RouterOS API Down
+    with (
+        patch("socket.create_connection", side_effect=mock_socket_alive),
+        patch("socket.gethostbyname", return_value="157.66.54.157"),
+        patch.object(collector.config, "tunnel_web_email", "user@test.com"),
+        patch.object(collector.config, "tunnel_web_password", "<REDACTED>"),
+        patch.object(collector.config, "tunnel_web_service_id", "123"),
+        patch(
+            "mrtg_poncab.tunnel_watchdog.tunnel_watchdog.inspect_member_portal",
+            return_value={"success": True, "code": "CONNECTED", "needs_restart": False},
+        ),
+    ):
+        scenario, reason = collector._diagnose_failure(RuntimeError("Connection refused"))
+        assert scenario == SCENARIO_ROUTEROS_API_DOWN
+        assert "Tunnel is connected [OK]" in reason
+        assert "RouterOS API on" in reason
+
+    # Scenario 5: Default MikroTik offline
     with (
         patch("socket.create_connection", side_effect=mock_socket_alive),
         patch("socket.gethostbyname", return_value="157.66.54.157"),

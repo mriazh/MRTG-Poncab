@@ -223,9 +223,11 @@ class TrafficCollector:
             (scenario_code: str, reason_detail: str)
         """
         failure_reason = str(exc)
+        host = self.config.routeros_host
         from .notifier import (
             SCENARIO_DEBIAN_NET_DOWN,
             SCENARIO_MIKROTIK_OFFLINE,
+            SCENARIO_ROUTEROS_API_DOWN,
             SCENARIO_TUNNEL_PROVIDER_DOWN,
             SCENARIO_TUNNEL_SESSION_ERROR,
         )
@@ -248,6 +250,7 @@ class TrafficCollector:
 
         # Layer 2: Inspect tunnel.web.id portal if credentials and service ID are configured.
         portal_available = False
+        portal: dict[str, Any] = {}
         if (
             self.config.tunnel_web_email
             and self.config.tunnel_web_password
@@ -271,6 +274,15 @@ class TrafficCollector:
             except Exception as exc:
                 logger.debug("Portal inspection exception during failure diagnosis: %s", exc)
 
+        if portal_available and portal.get("code") == "CONNECTED":
+            return (
+                SCENARIO_ROUTEROS_API_DOWN,
+                (
+                    f"Tunnel is connected [OK], but RouterOS API on "
+                    f"{host}:{self.config.routeros_port} is closed ({failure_reason})."
+                ),
+            )
+
         # A portal response explicitly reporting DISCONNECTED is sufficient to
         # classify the remote router as offline; do not reclassify via transport.
         if portal_available and portal.get("code") == "DISCONNECTED":
@@ -283,7 +295,6 @@ class TrafficCollector:
             )
 
         # Layer 3: Validate provider reachability only after portal inspection.
-        host = self.config.routeros_host
         try:
             resolved_ip = socket.gethostbyname(host)
         except socket.gaierror:
